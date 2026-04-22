@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flex Factory — Instant Quote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --bg-elev: #222222;
+    --bg-elev-2: #2a2a2a;
+    --divider: #3a3e44;
+    --text: #e8e8e8;
+    --muted: #8a8f96;
+    --orange: #e84d1a;
+    --orange-hover: #ff5e29;
+    --orange-dim: #7a2a10;
+    --danger: #ff6b6b;
+    --ok: #4ade80;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+  }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+  /* ---------- Top nav ---------- */
+  nav.topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(26,26,26,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--divider);
+    z-index: 100;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .mark {
+    width: 34px; height: 34px; background: var(--orange);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+    color: #fff; font-size: 15px; letter-spacing: 1px;
+  }
+  .brand .name { font-weight: 600; font-size: 15px; letter-spacing: 0.3px; }
+  .brand .sub { color: var(--muted); font-size: 13px; margin-left: 10px; border-left: 1px solid var(--divider); padding-left: 10px; }
+  nav.topbar .actions { display: flex; gap: 8px; }
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--divider);
+    padding: 6px 10px; border-radius: 2px;
+  }
+  .chip.live { color: var(--orange); border-color: var(--orange-dim); }
+
+  /* ---------- Main layout ---------- */
+  main {
+    position: fixed; top: 64px; left: 0; right: 0; bottom: 0;
+    display: grid; grid-template-columns: 1fr 420px;
+    transition: grid-template-columns 0.25s ease;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  }
+  /* SeekMake lives inside the viewer area; tabs toggle visibility */
+  #seekmake-pane {
+    position: absolute; inset: 0;
+    display: none; background: #fff;
+    z-index: 40;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #seekmake-pane.active { display: block; }
+  #seekmake-pane iframe { width: 100%; min-height: 100%; border: 0; display: block; }
+  #seekmake-pane .sm-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-elev); color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+  }
+
+  /* When SeekMake is active, collapse the right panel so the iframe owns the whole area */
+  main.seekmake-active { grid-template-columns: 1fr 0; }
+  main.seekmake-active #side-pane { display: none; }
+  main.seekmake-active #upload-pane,
+  main.seekmake-active #loading-pane,
+  main.seekmake-active .viewer-overlay,
+  main.seekmake-active #reset-btn,
+  main.seekmake-active #viewer-hint,
+  main.seekmake-active #viewer-canvas { visibility: hidden; }
+  /* Floating tab switcher so the user can still swap back to FF */
+  .tab-floating {
+    position: fixed; top: 16px; right: 16px;
+    display: none; z-index: 200;
+    background: rgba(26,26,26,0.92); backdrop-filter: blur(8px);
+    border: 1px solid var(--divider);
+  }
+  main.seekmake-active ~ .tab-floating, main.settings-active ~ .tab-floating { display: flex; }
+
+  /* ---------- Settings pane ---------- */
+  #settings-pane {
+    position: absolute; inset: 0;
+    display: none; background: var(--bg);
+    z-index: 40; overflow-y: auto; padding: 32px 48px 80px;
+  }
+  #settings-pane.active { display: block; }
+  main.settings-active { grid-template-columns: 1fr 0; }
+  main.settings-active #side-pane { display: none; }
+  main.settings-active #upload-pane,
+  main.settings-active #loading-pane,
+  main.settings-active .viewer-overlay,
+  main.settings-active #reset-btn,
+  main.settings-active #viewer-hint,
+  main.settings-active #viewer-canvas { visibility: hidden; }
+
+  #settings-pane .settings-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 28px; max-width: 1100px;
+  }
+  #settings-pane h1 {
+    font-size: 22px; font-weight: 600; letter-spacing: -0.3px;
+  }
+  #settings-pane .sub {
+    color: var(--muted); font-size: 13px; margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.3px;
+  }
+  #settings-pane .settings-actions { display: flex; gap: 8px; }
+
+  #settings-pane .settings-section {
+    max-width: 1100px;
+    background: var(--bg-elev);
+    border: 1px solid var(--divider);
+    margin-bottom: 20px;
+  }
+  #settings-pane .settings-section > h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 500; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--orange);
+    padding: 14px 20px; border-bottom: 1px solid var(--divider);
+  }
+  #settings-pane .settings-body { padding: 20px; }
+
+  .settings-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px 18px;
+  }
+  .settings-grid .field { margin-bottom: 0; }
+  .settings-grid .field label { margin-bottom: 6px; }
+  .settings-grid .field input {
+    padding: 8px 10px; font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .mats-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  }
+  .mats-table th, .mats-table td {
+    text-align: left; padding: 8px 10px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .mats-table th {
+    color: var(--muted); font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    font-size: 10px;
+  }
+  .mats-table input[type="text"], .mats-table input[type="number"] {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--divider); padding: 6px 8px;
+    font-family: inherit; font-size: 12px;
+    outline: none;
+  }
+  .mats-table input:focus { border-color: var(--orange); }
+  .mats-table .proc-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .mats-table .proc-chips label {
+    font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--divider);
+    padding: 3px 8px; cursor: pointer; user-select: none;
+  }
+  .mats-table .proc-chips input[type="checkbox"] { display: none; }
+  .mats-table .proc-chips input[type="checkbox"]:checked + span { color: var(--orange); }
+  .mats-table .proc-chips label:has(input:checked) { border-color: var(--orange); }
+  .mats-table .row-del {
+    background: transparent; border: 1px solid var(--divider); color: var(--muted);
+    padding: 4px 8px; font-family: inherit; font-size: 11px; cursor: pointer;
+  }
+  .mats-table .row-del:hover { border-color: var(--danger); color: var(--danger); }
+  .add-mat-btn {
+    margin-top: 12px; background: transparent; color: var(--orange);
+    border: 1px dashed var(--orange); padding: 8px 14px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
+  }
+  .add-mat-btn:hover { background: rgba(232,77,26,0.08); }
+
+  .btn-ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--divider); padding: 9px 14px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
+  }
+  .btn-ghost:hover { border-color: var(--orange); color: var(--orange); }
+  .btn-solid {
+    background: var(--orange); color: #fff;
+    border: none; padding: 9px 14px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
+  }
+  .btn-solid:hover { background: var(--orange-hover); }
+  .tab-floating button {
+    background: transparent; color: var(--muted);
+    border: none; padding: 10px 16px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .tab-floating button + button { border-left: 1px solid var(--divider); }
+  .tab-floating button.active { color: var(--orange); }
+  .tab-floating .dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted); margin-right: 6px; vertical-align: middle;
+  }
+  .tab-floating button.active .dot { background: var(--orange); }
+
+  /* ---------- Upload state ---------- */
+  #upload-pane {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px;
+    background: var(--bg);
+    z-index: 50;
+    transition: opacity 0.3s ease;
+  }
+  #upload-pane.hidden { opacity: 0; pointer-events: none; }
+  .drop {
+    width: 100%; max-width: 640px;
+    border: 1.5px dashed var(--divider);
+    background: var(--bg-elev);
+    padding: 56px 48px;
+    text-align: center;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    cursor: pointer;
+  }
+  .drop:hover, .drop.drag {
+    border-color: var(--orange);
+    background: #241c18;
+  }
+  .drop .icon {
+    width: 56px; height: 56px; margin: 0 auto 20px;
+    border: 2px solid var(--orange); display: flex; align-items: center; justify-content: center;
+    color: var(--orange); font-size: 28px; font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .drop h1 { font-size: 24px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.3px; }
+  .drop p { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
+  .drop .cta {
+    display: inline-block;
+    background: var(--orange); color: #fff;
+    padding: 12px 22px; font-weight: 600; font-size: 14px;
+    letter-spacing: 0.3px;
+    border: none; cursor: pointer;
+    font-family: inherit;
+  }
+  .drop .cta:hover { background: var(--orange-hover); }
+  .drop .hint {
+    margin-top: 20px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--muted); letter-spacing: 0.4px;
+  }
+  .drop .error {
+    margin-top: 18px; color: var(--danger); font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    display: none;
+  }
+  .drop .error.show { display: block; }
+
+  /* ---------- Viewer ---------- */
+  #viewer-pane { position: relative; background: #141414; overflow: hidden; }
+  #viewer-canvas { width: 100%; height: 100%; display: block; }
+  .viewer-overlay {
+    position: absolute; top: 16px; left: 16px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .viewer-overlay .chip.file {
+    background: rgba(26,26,26,0.8); color: var(--text);
+    border-color: var(--divider);
+    max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .viewer-hint {
+    position: absolute; bottom: 16px; left: 16px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--muted); letter-spacing: 0.4px;
+  }
+  .reset-btn {
+    position: absolute; top: 16px; right: 16px;
+    background: rgba(26,26,26,0.85); color: var(--text);
+    border: 1px solid var(--divider);
+    padding: 8px 14px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .reset-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+  /* ---------- Right panel ---------- */
+  #side-pane {
+    background: var(--bg-elev);
+    border-left: 1px solid var(--divider);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  @media (max-width: 900px) {
+    #side-pane { border-left: none; border-top: 1px solid var(--divider); max-height: 55vh; }
+  }
+  .panel-section { padding: 24px; border-bottom: 1px solid var(--divider); }
+  .panel-section:last-child { border-bottom: none; }
+  .panel-section h2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 500; letter-spacing: 1.2px;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .readout { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .readout .label { color: var(--muted); }
+  .readout .value { color: var(--text); text-align: right; font-weight: 500; }
+
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 12px; color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.5px;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  select, input[type="number"] {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--divider); padding: 10px 12px;
+    font-family: inherit; font-size: 14px;
+    outline: none;
+  }
+  select:focus, input[type="number"]:focus { border-color: var(--orange); }
+  .seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--divider);
+  }
+  .seg button {
+    background: transparent; color: var(--muted);
+    border: none; padding: 10px 12px;
+    font-family: inherit; font-size: 13px; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--divider); }
+  .seg button.active { background: var(--orange); color: #fff; }
+
+  .quote-hero {
+    padding: 24px;
+    background: linear-gradient(180deg, #241c18 0%, var(--bg-elev) 100%);
+    border-bottom: 1px solid var(--divider);
+  }
+  .quote-hero .total {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 40px; font-weight: 600;
+    color: var(--orange); letter-spacing: -1px;
+    line-height: 1;
+  }
+  .quote-hero .unit {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--muted); margin-top: 6px; letter-spacing: 0.4px;
+  }
+  .quote-hero .disclaimer {
+    margin-top: 14px; font-size: 11px; color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.3px;
+  }
+
+  .breakdown { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .breakdown .row { display: flex; justify-content: space-between; padding: 5px 0; color: var(--muted); }
+  .breakdown .row.total-row { border-top: 1px solid var(--divider); margin-top: 8px; padding-top: 10px; color: var(--text); font-weight: 600; }
+
+  .cta-primary {
+    width: 100%; background: var(--orange); color: #fff;
+    border: none; padding: 14px; cursor: pointer;
+    font-family: inherit; font-weight: 600; font-size: 14px;
+    letter-spacing: 0.4px;
+  }
+  .cta-primary:hover { background: var(--orange-hover); }
+  .cta-secondary {
+    width: 100%; background: transparent; color: var(--text);
+    border: 1px solid var(--divider); padding: 12px; cursor: pointer;
+    font-family: inherit; font-size: 13px; margin-top: 8px;
+  }
+  .cta-secondary:hover { border-color: var(--orange); color: var(--orange); }
+
+  .warn {
+    margin-top: 10px; padding: 10px 12px;
+    background: #2a1f12; border-left: 2px solid var(--orange);
+    font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+    color: #f0c69a; line-height: 1.4;
+  }
+
+  .loading-pane {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(20,20,20,0.9);
+    z-index: 60;
+    flex-direction: column; gap: 14px;
+  }
+  .loading-pane.hidden { display: none; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 2px solid var(--divider);
+    border-top-color: var(--orange);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-pane .txt {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--muted); letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--bg-elev-2); color: var(--text);
+    border: 1px solid var(--orange);
+    padding: 14px 22px; font-size: 14px;
+    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.3px;
+    opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 500; pointer-events: none;
+    border-left-width: 3px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex; border-bottom: 1px solid var(--divider);
+    background: var(--bg); position: sticky; top: 0; z-index: 10;
+  }
+  .tabs button {
+    flex: 1; background: transparent; color: var(--muted);
+    border: none; padding: 14px 12px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 2px solid transparent;
+    position: relative;
+  }
+  .tabs button:hover { color: var(--text); }
+  .tabs button.active { color: var(--orange); border-bottom-color: var(--orange); }
+  .tabs button .dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted); margin-right: 6px; vertical-align: middle;
+  }
+  .tabs button.active .dot { background: var(--orange); }
+  .tab-panel { display: none; flex-direction: column; flex: 1; }
+  .tab-panel.active { display: flex; }
+
+  /* ---------- SeekMake embed ---------- */
+  .embed-wrap {
+    display: flex; flex-direction: column; height: 100%;
+    padding: 16px; gap: 14px;
+  }
+  .embed-note {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--muted); line-height: 1.55; letter-spacing: 0.3px;
+    padding: 10px 12px; background: var(--bg);
+    border-left: 2px solid var(--orange);
+  }
+  .embed-note code {
+    color: var(--orange); background: transparent;
+    font-family: inherit; font-size: 11px;
+  }
+  .embed-frame {
+    flex: 1; min-height: 480px;
+    border: 1px solid var(--divider);
+    background: #fff;
+  }
+  .embed-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .embed-placeholder {
+    flex: 1; min-height: 380px;
+    border: 1px dashed var(--divider);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 32px 24px; gap: 12px;
+  }
+  .embed-placeholder .big {
+    font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+    color: var(--text); letter-spacing: 0.4px;
+  }
+  .embed-placeholder .small {
+    font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 320px;
+  }
+  .embed-placeholder a { color: var(--orange); text-decoration: none; }
+  .embed-placeholder a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="brand">
+    <div class="mark">FF</div>
+    <div class="name">Flex Factory</div>
+    <div class="sub">Instant Quote</div>
+  </div>
+  <div class="actions">
+    <span class="chip live" id="status-chip">● READY</span>
+  </div>
+</nav>
+
+<main>
+  <section id="viewer-pane">
+    <canvas id="viewer-canvas"></canvas>
+    <div class="viewer-overlay">
+      <span class="chip file mono" id="file-chip" style="display:none;"></span>
+    </div>
+    <button class="reset-btn" id="reset-btn" style="display:none;">↺ New file</button>
+    <div class="viewer-hint mono" id="viewer-hint" style="display:none;">Drag to orbit · Scroll to zoom · Right-drag to pan</div>
+
+    <div id="loading-pane" class="loading-pane hidden">
+      <div class="spinner"></div>
+      <div class="txt" id="loading-text">Analyzing geometry…</div>
+    </div>
+
+    <div id="upload-pane">
+      <div class="drop" id="drop-zone">
+        <div class="icon">↑</div>
+        <h1>Drop a 3D model to get an instant quote</h1>
+        <p>Upload an <span class="mono" style="color:var(--orange)">.stl</span> or <span class="mono" style="color:var(--orange)">.step</span> file. We'll analyse the geometry in your browser and return an indicative quote in seconds.</p>
+        <button class="cta" id="browse-btn" type="button">Browse files</button>
+        <input type="file" id="file-input" accept=".stl,.step,.stp" style="display:none;">
+        <div class="hint">STL · STEP · STP · up to 100 MB</div>
+        <div class="error" id="drop-error"></div>
+      </div>
+    </div>
+
+    <div id="seekmake-pane" data-embed-url="https://seekmake.com/instant-quote/?isEmbed=true&manufacturer=69e777c101f2ac54007c32e1">
+      <div class="sm-placeholder">Loading SeekMake widget…</div>
+    </div>
+
+    <div id="settings-pane">
+      <div class="settings-header">
+        <div>
+          <h1>FF Engine Settings</h1>
+          <div class="sub">All values customisable · saved to this browser</div>
+        </div>
+        <div class="settings-actions">
+          <button type="button" class="btn-ghost" id="settings-reset">Reset to defaults</button>
+          <button type="button" class="btn-solid" id="settings-save">Save &amp; apply</button>
+        </div>
+      </div>
+      <div id="settings-body"></div>
+    </div>
+  </section>
+
+  <aside id="side-pane">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="ff"><span class="dot"></span>FF Engine</button>
+      <button type="button" class="tab-btn" data-tab="settings"><span class="dot"></span>Settings</button>
+      <button type="button" class="tab-btn" data-tab="seekmake"><span class="dot"></span>SeekMake</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-ff">
+    <div class="quote-hero" id="quote-hero" style="display:none;">
+      <div class="total mono" id="total-price">—</div>
+      <div class="unit" id="unit-price">—</div>
+      <div class="disclaimer">Indicative — final quote from matched supplier</div>
+    </div>
+
+    <div class="panel-section" id="readout-section" style="display:none;">
+      <h2>Geometry</h2>
+      <div class="readout">
+        <div class="label">Volume</div>           <div class="value" id="r-volume">—</div>
+        <div class="label">Surface area</div>     <div class="value" id="r-surface">—</div>
+        <div class="label">Bounding box</div>     <div class="value" id="r-bbox">—</div>
+        <div class="label">Triangles</div>        <div class="value" id="r-tris">—</div>
+        <div class="label">Est. weight</div>      <div class="value" id="r-weight">—</div>
+      </div>
+      <div class="warn" id="mesh-warn" style="display:none;"></div>
+    </div>
+
+    <div class="panel-section" id="config-section" style="display:none;">
+      <h2>Configuration</h2>
+      <div class="field">
+        <label for="f-process">Process</label>
+        <select id="f-process"></select>
+      </div>
+      <div class="field">
+        <label for="f-material">Material</label>
+        <select id="f-material"></select>
+      </div>
+      <div id="process-params"></div>
+      <div class="field">
+        <label for="f-qty">Quantity</label>
+        <input type="number" id="f-qty" min="1" max="500" value="1">
+      </div>
+      <div class="field">
+        <label>Lead time</label>
+        <div class="seg" id="f-lead">
+          <button type="button" data-lead="standard" class="active">Standard · 7–10d</button>
+          <button type="button" data-lead="express">Express · 2–3d</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section" id="breakdown-section" style="display:none;">
+      <h2>Breakdown</h2>
+      <div class="breakdown" id="breakdown"></div>
+      <button class="cta-primary" id="request-btn" style="margin-top:18px;">Request supplier match</button>
+      <button class="cta-secondary" id="new-btn">Upload a different file</button>
+    </div>
+
+    <div class="panel-section" id="empty-side" style="padding: 40px 24px;">
+      <h2>How it works</h2>
+      <div style="font-size: 13px; line-height: 1.7; color: var(--muted);">
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">1.</span> Upload an STL or STEP file.</p>
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">2.</span> We compute volume, surface area, and bounding box entirely in your browser — your file never leaves your device.</p>
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">3.</span> Pick a process and material to see an instant indicative quote.</p>
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">4.</span> Submit to get matched with a Flex Factory supplier.</p>
+        <p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider); color: var(--muted); font-size: 12px;">Switch to the <b style="color:var(--text)">SeekMake</b> tab to compare FF's quote against a live third-party quoting service for the same file.</p>
+      </div>
+    </div>
+    </div><!-- /#tab-ff -->
+
+    <div class="tab-panel" id="tab-seekmake">
+      <div class="panel-section" style="padding: 40px 24px;">
+        <h2>Third-party comparison</h2>
+        <div style="font-size: 13px; line-height: 1.7; color: var(--muted);">
+          <p style="margin-bottom: 12px;">SeekMake's live instant-quote widget is shown in the main area on the left.</p>
+          <p style="margin-bottom: 12px;">Upload the same part there to see how FF's custom quote compares against one of the few genuinely free third-party quoting services.</p>
+          <p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider); font-size: 12px;">Click <b style="color:var(--text)">FF Engine</b> above to return to the FF upload + quote flow.</p>
+        </div>
+      </div>
+    </div><!-- /#tab-seekmake -->
+  </aside>
+</main>
+
+<div class="tab-floating" id="floating-tabs">
+  <button type="button" class="tab-btn-float" data-tab="ff"><span class="dot"></span>FF Engine</button>
+  <button type="button" class="tab-btn-float" data-tab="settings"><span class="dot"></span>Settings</button>
+  <button type="button" class="tab-btn-float" data-tab="seekmake"><span class="dot"></span>SeekMake</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+// ---------- Pricing data (SAR; 1 USD ≈ 3.75 SAR) ----------
+const DEFAULTS = {
+  general: {
+    currency: 'SAR',
+    qtyTiers: [
+      { minQty: 1,   multiplier: 1.00 },
+      { minQty: 10,  multiplier: 0.85 },
+      { minQty: 50,  multiplier: 0.75 },
+      { minQty: 100, multiplier: 0.65 }
+    ],
+    leadMultipliers: { standard: 1.00, express: 1.40 }
+  },
+  materials: {
+    pla:         { name: 'PLA',            density: 1.24, pricePerG: 0.19,  processes: ['fdm'] },
+    petg:        { name: 'PETG',           density: 1.27, pricePerG: 0.26,  processes: ['fdm'] },
+    abs:         { name: 'ABS',            density: 1.04, pricePerG: 0.30,  processes: ['fdm'] },
+    asa:         { name: 'ASA',            density: 1.07, pricePerG: 0.38,  processes: ['fdm'] },
+    flex_tpu:    { name: 'Flex TPU',       density: 1.20, pricePerG: 0.56,  processes: ['fdm'] },
+    nylon_fdm:   { name: 'Nylon 12 (FDM)', density: 1.01, pricePerG: 0.68,  processes: ['fdm'] },
+    nylon_sls:   { name: 'Nylon 12 (SLS)', density: 1.01, pricePerG: 0.68,  processes: ['sls'] },
+    resin_std:   { name: 'Standard resin', density: 1.15, pricePerG: 0.83,  processes: ['sla'] },
+    resin_tough: { name: 'Tough resin',    density: 1.18, pricePerG: 1.31,  processes: ['sla'] },
+    alu:         { name: 'Aluminium 6061', density: 2.70, pricePerG: 0.68,  processes: ['cnc'] },
+    steel_mild:  { name: 'Mild steel',     density: 7.85, pricePerG: 0.38,  processes: ['cnc'] },
+    steel_ss304: { name: 'Stainless 304',  density: 8.00, pricePerG: 0.94,  processes: ['cnc'] },
+    brass:       { name: 'Brass',          density: 8.50, pricePerG: 1.13,  processes: ['cnc'] }
+  },
+  processes: {
+    fdm: {
+      name: 'FDM 3D Printing', hourlyRate: 15.00, setupFee: 13.00, complexity: 1.10, mmPerHour: 18000,
+      params: {
+        infill:       { label: 'Infill',       unit: '%',  min: 10,    max: 100,  step: 5,     default: 20 },
+        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.10,  max: 0.40, step: 0.05,  default: 0.20 }
+      },
+      baseLayerHeight: 0.20 // reference layer height used in time scaling
+    },
+    sla: {
+      name: 'SLA 3D Printing', hourlyRate: 28.00, setupFee: 22.50, complexity: 1.25, mmPerHour: 9000,
+      params: {
+        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.025, max: 0.10, step: 0.005, default: 0.050 }
+      },
+      baseLayerHeight: 0.05
+    },
+    sls: {
+      name: 'SLS 3D Printing', hourlyRate: 45.00, setupFee: 56.00, complexity: 1.20, mmPerHour: 11000,
+      params: {
+        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.08, max: 0.20, step: 0.01,   default: 0.12 }
+      },
+      baseLayerHeight: 0.12
+    },
+    cnc: {
+      name: 'CNC Machining',   hourlyRate: 142.00, setupFee: 169.00, complexity: 1.60, mmPerHour: 45000,
+      params: {
+        tolerance:    { label: 'Tolerance',     type: 'select', options: [
+          { value: 'standard', label: 'Standard ±0.1 mm',  multiplier: 1.00 },
+          { value: 'tight',    label: 'Tight ±0.05 mm',    multiplier: 1.25 },
+          { value: 'ultra',    label: 'Ultra-tight ±0.02 mm', multiplier: 1.60 }
+        ], default: 'standard' },
+        finish:       { label: 'Surface finish', type: 'select', options: [
+          { value: 'machined', label: 'As-machined',     multiplier: 1.00 },
+          { value: 'blasted',  label: 'Bead-blasted',    multiplier: 1.10 },
+          { value: 'anodised', label: 'Anodised / coated', multiplier: 1.25 }
+        ], default: 'machined' }
+      }
+    }
+  }
+};
+
+// Deep-clone helper for defaults → working state
+const deepClone = (o) => JSON.parse(JSON.stringify(o));
+
+// ---------- Persisted state ----------
+const STORAGE_KEY = 'ff_instant_quote_settings_v1';
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return deepClone(DEFAULTS);
+    const parsed = JSON.parse(raw);
+    // Shallow merge: if shape drifts between versions, fall back to defaults per key
+    return {
+      general:   Object.assign(deepClone(DEFAULTS.general),   parsed.general   || {}),
+      materials: parsed.materials || deepClone(DEFAULTS.materials),
+      processes: mergeProcesses(parsed.processes)
+    };
+  } catch (e) {
+    console.warn('Failed to load settings, using defaults.', e);
+    return deepClone(DEFAULTS);
+  }
+}
+function mergeProcesses(saved) {
+  const out = deepClone(DEFAULTS.processes);
+  if (!saved) return out;
+  Object.keys(out).forEach(k => {
+    if (saved[k]) {
+      out[k].hourlyRate = saved[k].hourlyRate ?? out[k].hourlyRate;
+      out[k].setupFee   = saved[k].setupFee   ?? out[k].setupFee;
+      out[k].complexity = saved[k].complexity ?? out[k].complexity;
+      out[k].mmPerHour  = saved[k].mmPerHour  ?? out[k].mmPerHour;
+    }
+  });
+  return out;
+}
+function saveSettings() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { console.warn('Could not save settings.', e); }
+}
+let state = loadSettings();
+const MATERIALS = new Proxy({}, { get: (_, k) => state.materials[k], ownKeys: () => Object.keys(state.materials), getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) });
+const PROCESSES = new Proxy({}, { get: (_, k) => state.processes[k], ownKeys: () => Object.keys(state.processes), getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) });
+
+function quantityDiscount(qty) {
+  const tiers = [...state.general.qtyTiers].sort((a, b) => b.minQty - a.minQty);
+  for (const t of tiers) if (qty >= t.minQty) return t.multiplier;
+  return 1.0;
+}
+
+function fmtPrice(n) { return `${state.general.currency} ${n.toFixed(2)}`; }
+
+// ---------- Three.js setup ----------
+const canvas = document.getElementById('viewer-canvas');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x141414);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100000);
+camera.position.set(100, 100, 100);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+const key = new THREE.DirectionalLight(0xffffff, 0.9);
+key.position.set(1, 1.5, 1);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xe84d1a, 0.45);
+rim.position.set(-1, 0.5, -1);
+scene.add(rim);
+
+// Grid
+const grid = new THREE.GridHelper(400, 20, 0x3a3e44, 0x2a2a2a);
+grid.material.opacity = 0.35; grid.material.transparent = true;
+scene.add(grid);
+
+let currentMesh = null;
+
+function resize() {
+  const pane = document.getElementById('viewer-pane');
+  const w = pane.clientWidth, h = pane.clientHeight;
+  if (w === 0 || h === 0) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+
+// ---------- Geometry analysis ----------
+function analyzeGeometry(geometry) {
+  geometry.computeBoundingBox();
+  const bbox = geometry.boundingBox;
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  const pos = geometry.attributes.position;
+  const triCount = pos.count / 3;
+
+  // Signed-tetrahedron volume
+  let volume = 0;
+  let surface = 0;
+  const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
+  const cross = new THREE.Vector3(), edge1 = new THREE.Vector3(), edge2 = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i += 3) {
+    vA.fromBufferAttribute(pos, i);
+    vB.fromBufferAttribute(pos, i + 1);
+    vC.fromBufferAttribute(pos, i + 2);
+    volume += vA.dot(new THREE.Vector3().crossVectors(vB, vC)) / 6;
+    edge1.subVectors(vB, vA);
+    edge2.subVectors(vC, vA);
+    cross.crossVectors(edge1, edge2);
+    surface += cross.length() / 2;
+  }
+
+  const watertight = volume > 0;
+  return {
+    volume_mm3: Math.abs(volume),
+    surface_mm2: surface,
+    bbox_mm: { x: size.x, y: size.y, z: size.z },
+    triCount,
+    watertight
+  };
+}
+
+// ---------- UI state ----------
+const ui = {
+  uploadPane: document.getElementById('upload-pane'),
+  dropZone: document.getElementById('drop-zone'),
+  fileInput: document.getElementById('file-input'),
+  browseBtn: document.getElementById('browse-btn'),
+  dropError: document.getElementById('drop-error'),
+  loadingPane: document.getElementById('loading-pane'),
+  loadingText: document.getElementById('loading-text'),
+  fileChip: document.getElementById('file-chip'),
+  resetBtn: document.getElementById('reset-btn'),
+  viewerHint: document.getElementById('viewer-hint'),
+  statusChip: document.getElementById('status-chip'),
+
+  emptySide: document.getElementById('empty-side'),
+  quoteHero: document.getElementById('quote-hero'),
+  readoutSection: document.getElementById('readout-section'),
+  configSection: document.getElementById('config-section'),
+  breakdownSection: document.getElementById('breakdown-section'),
+
+  rVolume: document.getElementById('r-volume'),
+  rSurface: document.getElementById('r-surface'),
+  rBbox: document.getElementById('r-bbox'),
+  rTris: document.getElementById('r-tris'),
+  rWeight: document.getElementById('r-weight'),
+  meshWarn: document.getElementById('mesh-warn'),
+
+  fProcess: document.getElementById('f-process'),
+  fMaterial: document.getElementById('f-material'),
+  fQty: document.getElementById('f-qty'),
+  fLead: document.getElementById('f-lead'),
+
+  totalPrice: document.getElementById('total-price'),
+  unitPrice: document.getElementById('unit-price'),
+  breakdown: document.getElementById('breakdown'),
+
+  requestBtn: document.getElementById('request-btn'),
+  newBtn: document.getElementById('new-btn'),
+  toast: document.getElementById('toast')
+};
+
+let currentAnalysis = null;
+let currentFilename = null;
+
+// Populate process/material selects
+function populateProcesses() {
+  ui.fProcess.innerHTML = '';
+  Object.entries(PROCESSES).forEach(([key, p]) => {
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = p.name;
+    ui.fProcess.appendChild(opt);
+  });
+}
+function populateMaterials() {
+  const process = ui.fProcess.value;
+  ui.fMaterial.innerHTML = '';
+  Object.entries(MATERIALS).forEach(([key, m]) => {
+    if (!m.processes.includes(process)) return;
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = m.name;
+    ui.fMaterial.appendChild(opt);
+  });
+}
+populateProcesses();
+populateMaterials();
+// renderProcessParams is defined below; call after DOM ready via timeout to keep source order readable
+setTimeout(() => renderProcessParams(), 0);
+
+// ---------- Drop zone interactions ----------
+function showError(msg) {
+  ui.dropError.textContent = msg;
+  ui.dropError.classList.add('show');
+}
+function clearError() {
+  ui.dropError.classList.remove('show');
+  ui.dropError.textContent = '';
+}
+
+ui.browseBtn.addEventListener('click', (e) => { e.stopPropagation(); ui.fileInput.click(); });
+ui.dropZone.addEventListener('click', () => ui.fileInput.click());
+ui.fileInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+['dragenter', 'dragover'].forEach(evt => {
+  ui.dropZone.addEventListener(evt, (e) => {
+    e.preventDefault(); e.stopPropagation();
+    ui.dropZone.classList.add('drag');
+  });
+});
+['dragleave', 'drop'].forEach(evt => {
+  ui.dropZone.addEventListener(evt, (e) => {
+    e.preventDefault(); e.stopPropagation();
+    ui.dropZone.classList.remove('drag');
+  });
+});
+ui.dropZone.addEventListener('drop', (e) => {
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => e.preventDefault());
+
+function getExt(name) {
+  const m = name.toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? m[1] : '';
+}
+
+function handleFile(file) {
+  clearError();
+  const ext = getExt(file.name);
+  const supported = ['stl', 'step', 'stp'];
+  if (!supported.includes(ext)) {
+    showError(`Unsupported file type ".${ext}". Please upload an .stl, .step, or .stp file.`);
+    return;
+  }
+  if (file.size > 100 * 1024 * 1024) {
+    showError('File exceeds 100 MB limit.');
+    return;
+  }
+  currentFilename = file.name;
+
+  ui.statusChip.textContent = '● LOADING';
+  ui.loadingPane.classList.remove('hidden');
+  ui.loadingText.textContent = 'Reading file…';
+  ui.uploadPane.classList.add('hidden');
+
+  const reader = new FileReader();
+  reader.onerror = () => {
+    showError('Could not read the file.');
+    resetToUpload();
+  };
+  reader.onload = (e) => {
+    if (ext === 'stl') {
+      ui.loadingText.textContent = 'Parsing STL…';
+      setTimeout(() => parseSTL(e.target.result), 30);
+    } else {
+      ui.loadingText.textContent = 'Loading STEP parser (first use downloads ~8 MB)…';
+      setTimeout(() => parseSTEP(e.target.result), 30);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseSTL(buffer) {
+  let geometry;
+  try {
+    geometry = new STLLoader().parse(buffer);
+  } catch (err) {
+    console.error(err);
+    showError('Failed to parse STL. File may be corrupt.');
+    resetToUpload();
+    return;
+  }
+  finishGeometry(geometry, 'STL');
+}
+
+// ---------- STEP parsing (lazy-loaded occt-import-js) ----------
+let occtPromise = null;
+function loadOcct() {
+  if (occtPromise) return occtPromise;
+  occtPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.22/dist/occt-import-js.js';
+    script.onload = () => {
+      if (typeof occtimportjs !== 'function') {
+        reject(new Error('occt-import-js loaded but global not found.'));
+        return;
+      }
+      occtimportjs({
+        locateFile: (f) => `https://cdn.jsdelivr.net/npm/occt-import-js@0.0.22/dist/${f}`
+      }).then(resolve).catch(reject);
+    };
+    script.onerror = () => reject(new Error('Failed to download STEP parser from CDN.'));
+    document.head.appendChild(script);
+  });
+  return occtPromise;
+}
+
+async function parseSTEP(buffer) {
+  let occt;
+  try {
+    occt = await loadOcct();
+  } catch (err) {
+    console.error(err);
+    showError('Could not load STEP parser. Check your internet connection.');
+    resetToUpload();
+    return;
+  }
+
+  ui.loadingText.textContent = 'Tessellating STEP geometry…';
+  await new Promise(r => setTimeout(r, 30));
+
+  let result;
+  try {
+    result = occt.ReadStepFile(new Uint8Array(buffer), null);
+  } catch (err) {
+    console.error(err);
+    showError('Failed to parse STEP file. It may be corrupt or use an unsupported schema.');
+    resetToUpload();
+    return;
+  }
+  if (!result || !result.success || !result.meshes || result.meshes.length === 0) {
+    showError('STEP file contained no usable geometry.');
+    resetToUpload();
+    return;
+  }
+
+  // Merge all meshes into one BufferGeometry
+  let totalVerts = 0, totalIdx = 0;
+  result.meshes.forEach(m => {
+    totalVerts += m.attributes.position.array.length;
+    totalIdx += m.index ? m.index.array.length : (m.attributes.position.array.length / 3);
+  });
+  const positions = new Float32Array(totalVerts);
+  const indices = new Uint32Array(totalIdx);
+  let vOff = 0, iOff = 0, vertBase = 0;
+  result.meshes.forEach(m => {
+    const p = m.attributes.position.array;
+    positions.set(p, vOff);
+    if (m.index) {
+      const idx = m.index.array;
+      for (let i = 0; i < idx.length; i++) indices[iOff + i] = idx[i] + vertBase;
+      iOff += idx.length;
+    } else {
+      const n = p.length / 3;
+      for (let i = 0; i < n; i++) indices[iOff + i] = vertBase + i;
+      iOff += n;
+    }
+    vOff += p.length;
+    vertBase += p.length / 3;
+  });
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  // Expand to non-indexed so our triangle-based volume math stays identical to STL path
+  const nonIndexed = geometry.toNonIndexed();
+  geometry.dispose();
+  finishGeometry(nonIndexed, 'STEP');
+}
+
+function finishGeometry(geometry, sourceLabel) {
+  if (!geometry.attributes.position || geometry.attributes.position.count === 0) {
+    showError(`${sourceLabel} contains no geometry.`);
+    resetToUpload();
+    return;
+  }
+  ui.loadingText.textContent = 'Computing volume…';
+  setTimeout(() => {
+    const analysis = analyzeGeometry(geometry);
+    currentAnalysis = analysis;
+    addMeshToScene(geometry);
+    populateReadout(analysis);
+    showQuoteUI();
+    updateQuote();
+    ui.loadingPane.classList.add('hidden');
+    ui.statusChip.textContent = '● QUOTED';
+  }, 30);
+}
+
+function addMeshToScene(geometry) {
+  if (currentMesh) {
+    scene.remove(currentMesh);
+    currentMesh.geometry.dispose();
+    currentMesh.material.dispose();
+  }
+  geometry.computeVertexNormals();
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xe84d1a, metalness: 0.15, roughness: 0.55, flatShading: false
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+
+  geometry.computeBoundingBox();
+  const center = new THREE.Vector3();
+  geometry.boundingBox.getCenter(center);
+  mesh.position.sub(center);
+
+  scene.add(mesh);
+  currentMesh = mesh;
+
+  const size = new THREE.Vector3();
+  geometry.boundingBox.getSize(size);
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const dist = maxDim * 2.2;
+  camera.position.set(dist, dist * 0.8, dist);
+  camera.near = maxDim / 100;
+  camera.far = maxDim * 100;
+  camera.updateProjectionMatrix();
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  // Resize grid
+  scene.remove(grid);
+  const gridSize = Math.max(maxDim * 3, 100);
+  const newGrid = new THREE.GridHelper(gridSize, 20, 0x3a3e44, 0x2a2a2a);
+  newGrid.material.opacity = 0.35; newGrid.material.transparent = true;
+  newGrid.position.y = -size.y / 2;
+  scene.add(newGrid);
+
+  ui.fileChip.style.display = 'inline-block';
+  ui.fileChip.textContent = currentFilename;
+  ui.resetBtn.style.display = 'block';
+  ui.viewerHint.style.display = 'block';
+}
+
+function populateReadout(a) {
+  const vol_cm3 = a.volume_mm3 / 1000;
+  const surf_cm2 = a.surface_mm2 / 100;
+  ui.rVolume.textContent = `${vol_cm3.toFixed(2)} cm³`;
+  ui.rSurface.textContent = `${surf_cm2.toFixed(1)} cm²`;
+  ui.rBbox.textContent = `${a.bbox_mm.x.toFixed(1)} × ${a.bbox_mm.y.toFixed(1)} × ${a.bbox_mm.z.toFixed(1)} mm`;
+  ui.rTris.textContent = a.triCount.toLocaleString();
+  const material = MATERIALS[ui.fMaterial.value];
+  if (material) ui.rWeight.textContent = `${(vol_cm3 * material.density).toFixed(1)} g · ${material.name}`;
+
+  if (!a.watertight) {
+    ui.meshWarn.style.display = 'block';
+    ui.meshWarn.textContent = 'Mesh is not watertight — volume estimate may be imprecise.';
+  } else {
+    ui.meshWarn.style.display = 'none';
+  }
+}
+
+function showQuoteUI() {
+  ui.emptySide.style.display = 'none';
+  ui.quoteHero.style.display = 'block';
+  ui.readoutSection.style.display = 'block';
+  ui.configSection.style.display = 'block';
+  ui.breakdownSection.style.display = 'block';
+}
+
+// ---------- Quoting ----------
+function getLead() {
+  const active = ui.fLead.querySelector('button.active');
+  return active ? active.dataset.lead : 'standard';
+}
+
+function getProcessParamValues(processKey) {
+  const vals = {};
+  const process = PROCESSES[processKey];
+  if (!process || !process.params) return vals;
+  Object.keys(process.params).forEach(pKey => {
+    const input = document.getElementById(`pp-${processKey}-${pKey}`);
+    if (!input) { vals[pKey] = process.params[pKey].default; return; }
+    const spec = process.params[pKey];
+    if (spec.type === 'select') vals[pKey] = input.value;
+    else vals[pKey] = parseFloat(input.value);
+  });
+  return vals;
+}
+
+function updateQuote() {
+  if (!currentAnalysis) return;
+  const a = currentAnalysis;
+  const processKey = ui.fProcess.value;
+  const process = PROCESSES[processKey];
+  const material = MATERIALS[ui.fMaterial.value];
+  if (!material || !process) return;
+
+  const qty = Math.max(1, Math.min(500, parseInt(ui.fQty.value) || 1));
+  const lead = getLead();
+  const leadMult = state.general.leadMultipliers[lead] ?? 1.0;
+  const params = getProcessParamValues(processKey);
+
+  // Material-usage factor and time-scale factor per process
+  let materialFactor = 1.0;
+  let timeScale = 1.0;
+  let toleranceMult = 1.0;
+  let finishMult = 1.0;
+  const modifiers = [];
+
+  if (processKey === 'fdm') {
+    const infillPct = params.infill ?? 20;
+    materialFactor = 0.15 + 0.85 * (infillPct / 100); // shell baseline + infill
+    const lh = params.layerHeight ?? process.baseLayerHeight;
+    timeScale = process.baseLayerHeight / lh;
+    modifiers.push({ label: `Infill (${infillPct}%)`, value: `×${materialFactor.toFixed(2)} mat.` });
+    modifiers.push({ label: `Layer height (${lh.toFixed(2)} mm)`, value: `×${timeScale.toFixed(2)} time` });
+  } else if (processKey === 'sla' || processKey === 'sls') {
+    const lh = params.layerHeight ?? process.baseLayerHeight;
+    timeScale = process.baseLayerHeight / lh;
+    modifiers.push({ label: `Layer height (${lh.toFixed(3)} mm)`, value: `×${timeScale.toFixed(2)} time` });
+  } else if (processKey === 'cnc') {
+    const tolOpt = process.params.tolerance.options.find(o => o.value === params.tolerance);
+    const finOpt = process.params.finish.options.find(o => o.value === params.finish);
+    toleranceMult = tolOpt ? tolOpt.multiplier : 1.0;
+    finishMult    = finOpt ? finOpt.multiplier : 1.0;
+    if (tolOpt) modifiers.push({ label: `Tolerance (${tolOpt.label})`, value: `×${toleranceMult.toFixed(2)}` });
+    if (finOpt) modifiers.push({ label: `Finish (${finOpt.label})`, value: `×${finishMult.toFixed(2)}` });
+  }
+
+  const vol_cm3 = a.volume_mm3 / 1000;
+  const weight_g = vol_cm3 * material.density * materialFactor;
+  const materialCost = weight_g * material.pricePerG;
+  const est_hours = (a.volume_mm3 / process.mmPerHour) * timeScale;
+  const machineCost = est_hours * process.hourlyRate;
+  const setupFee = process.setupFee;
+  const subtotal = (materialCost + machineCost + setupFee) * process.complexity * toleranceMult * finishMult;
+  const qtyDisc = quantityDiscount(qty);
+  const unitPrice = subtotal * qtyDisc * leadMult;
+  const total = unitPrice * qty;
+
+  ui.rWeight.textContent = `${weight_g.toFixed(1)} g · ${material.name}`;
+
+  ui.totalPrice.textContent = fmtPrice(total);
+  ui.unitPrice.textContent = `${fmtPrice(unitPrice)} / unit × ${qty} · ${lead === 'express' ? 'Express' : 'Standard'} lead`;
+
+  const modifierRows = modifiers.map(m =>
+    `<div class="row"><span>${m.label}</span><span>${m.value}</span></div>`
+  ).join('');
+
+  ui.breakdown.innerHTML = `
+    <div class="row"><span>Material (${material.name})</span><span>${fmtPrice(materialCost)}</span></div>
+    <div class="row"><span>Machine time (${(est_hours*60).toFixed(0)} min @ ${fmtPrice(process.hourlyRate)}/h)</span><span>${fmtPrice(machineCost)}</span></div>
+    <div class="row"><span>Setup fee</span><span>${fmtPrice(setupFee)}</span></div>
+    <div class="row"><span>Complexity factor</span><span>×${process.complexity.toFixed(2)}</span></div>
+    ${modifierRows}
+    <div class="row"><span>Quantity discount (×${qty})</span><span>${qtyDisc < 1 ? `×${qtyDisc.toFixed(2)}` : '—'}</span></div>
+    <div class="row"><span>Lead time</span><span>${leadMult > 1 ? `×${leadMult.toFixed(2)}` : '—'}</span></div>
+    <div class="row total-row"><span>Total (${qty} unit${qty>1?'s':''})</span><span>${fmtPrice(total)}</span></div>
+  `;
+}
+
+function renderProcessParams() {
+  const host = document.getElementById('process-params');
+  if (!host) return;
+  const processKey = ui.fProcess.value;
+  const process = PROCESSES[processKey];
+  host.innerHTML = '';
+  if (!process || !process.params) return;
+
+  Object.entries(process.params).forEach(([pKey, spec]) => {
+    const field = document.createElement('div');
+    field.className = 'field';
+    const id = `pp-${processKey}-${pKey}`;
+    const labelText = spec.unit ? `${spec.label} (${spec.unit})` : spec.label;
+    field.innerHTML = `<label for="${id}">${labelText}</label>`;
+
+    if (spec.type === 'select') {
+      const sel = document.createElement('select');
+      sel.id = id;
+      spec.options.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        if (opt.value === spec.default) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', updateQuote);
+      field.appendChild(sel);
+    } else {
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.id = id;
+      inp.min = spec.min; inp.max = spec.max; inp.step = spec.step;
+      inp.value = spec.default;
+      inp.addEventListener('input', updateQuote);
+      field.appendChild(inp);
+    }
+    host.appendChild(field);
+  });
+}
+
+ui.fProcess.addEventListener('change', () => { populateMaterials(); renderProcessParams(); updateQuote(); });
+ui.fMaterial.addEventListener('change', updateQuote);
+ui.fQty.addEventListener('input', updateQuote);
+ui.fLead.querySelectorAll('button').forEach(b => {
+  b.addEventListener('click', () => {
+    ui.fLead.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    updateQuote();
+  });
+});
+
+// ---------- Reset ----------
+function resetToUpload() {
+  currentAnalysis = null;
+  currentFilename = null;
+  if (currentMesh) {
+    scene.remove(currentMesh);
+    currentMesh.geometry.dispose();
+    currentMesh.material.dispose();
+    currentMesh = null;
+  }
+  ui.fileInput.value = '';
+  ui.uploadPane.classList.remove('hidden');
+  ui.loadingPane.classList.add('hidden');
+  ui.fileChip.style.display = 'none';
+  ui.resetBtn.style.display = 'none';
+  ui.viewerHint.style.display = 'none';
+  ui.emptySide.style.display = 'block';
+  ui.quoteHero.style.display = 'none';
+  ui.readoutSection.style.display = 'none';
+  ui.configSection.style.display = 'none';
+  ui.breakdownSection.style.display = 'none';
+  ui.statusChip.textContent = '● READY';
+}
+ui.resetBtn.addEventListener('click', resetToUpload);
+ui.newBtn.addEventListener('click', resetToUpload);
+
+// ---------- Toast ----------
+function showToast(msg) {
+  ui.toast.textContent = msg;
+  ui.toast.classList.add('show');
+  clearTimeout(ui.toast._t);
+  ui.toast._t = setTimeout(() => ui.toast.classList.remove('show'), 3200);
+}
+ui.requestBtn.addEventListener('click', () => {
+  showToast('✓ Request sent — matching you with Flex Factory suppliers');
+});
+
+// ---------- Tab switching ----------
+function setActiveTab(target) {
+  document.querySelectorAll('.tab-btn, .tab-btn-float').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === target);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'tab-' + target);
+  });
+  const smPane = document.getElementById('seekmake-pane');
+  const stPane = document.getElementById('settings-pane');
+  if (smPane) smPane.classList.toggle('active', target === 'seekmake');
+  if (stPane) stPane.classList.toggle('active', target === 'settings');
+  const main = document.querySelector('main');
+  main.classList.toggle('seekmake-active', target === 'seekmake');
+  main.classList.toggle('settings-active', target === 'settings');
+  if (target === 'seekmake') mountSeekMake();
+  if (target === 'settings') renderSettings();
+  setTimeout(resize, 300);
+}
+
+document.querySelectorAll('.tab-btn, .tab-btn-float').forEach(btn => {
+  btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+});
+
+// ---------- Settings editor ----------
+function renderSettings() {
+  const body = document.getElementById('settings-body');
+  if (!body) return;
+
+  const g = state.general;
+  const generalHTML = `
+    <div class="settings-section">
+      <h3>General</h3>
+      <div class="settings-body">
+        <div class="settings-grid">
+          <div class="field">
+            <label>Currency symbol</label>
+            <input type="text" id="s-currency" value="${g.currency}" maxlength="6">
+          </div>
+          <div class="field">
+            <label>Standard lead multiplier</label>
+            <input type="number" id="s-lead-std" step="0.05" min="0.5" max="3" value="${g.leadMultipliers.standard}">
+          </div>
+          <div class="field">
+            <label>Express lead multiplier</label>
+            <input type="number" id="s-lead-exp" step="0.05" min="0.5" max="3" value="${g.leadMultipliers.express}">
+          </div>
+        </div>
+        <div style="margin-top:20px;">
+          <label style="display:block;font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">Quantity-discount tiers</label>
+          <div class="settings-grid" id="s-qty-tiers">
+            ${g.qtyTiers.map((t, i) => `
+              <div class="field" style="display:flex;gap:8px;align-items:end;">
+                <div style="flex:1;">
+                  <label>Min qty</label>
+                  <input type="number" min="1" class="s-tier-qty" data-i="${i}" value="${t.minQty}">
+                </div>
+                <div style="flex:1;">
+                  <label>Multiplier</label>
+                  <input type="number" step="0.05" min="0.1" max="1" class="s-tier-mult" data-i="${i}" value="${t.multiplier}">
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const processesHTML = Object.entries(state.processes).map(([pKey, p]) => {
+    const paramFields = p.params ? Object.entries(p.params).map(([kKey, spec]) => {
+      const id = `s-${pKey}-default-${kKey}`;
+      if (spec.type === 'select') {
+        return `
+          <div class="field">
+            <label>Default ${spec.label.toLowerCase()}</label>
+            <select id="${id}">
+              ${spec.options.map(o => `<option value="${o.value}" ${o.value === spec.default ? 'selected' : ''}>${o.label}</option>`).join('')}
+            </select>
+          </div>`;
+      }
+      return `
+        <div class="field">
+          <label>Default ${spec.label.toLowerCase()}${spec.unit ? ` (${spec.unit})` : ''}</label>
+          <input type="number" id="${id}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${spec.default}">
+        </div>`;
+    }).join('') : '';
+
+    return `
+      <div class="settings-section">
+        <h3>${p.name}</h3>
+        <div class="settings-body">
+          <div class="settings-grid">
+            <div class="field">
+              <label>Hourly rate (${g.currency}/h)</label>
+              <input type="number" step="1" min="0" id="s-${pKey}-rate" value="${p.hourlyRate}">
+            </div>
+            <div class="field">
+              <label>Setup fee (${g.currency})</label>
+              <input type="number" step="1" min="0" id="s-${pKey}-setup" value="${p.setupFee}">
+            </div>
+            <div class="field">
+              <label>Complexity factor</label>
+              <input type="number" step="0.05" min="1" max="3" id="s-${pKey}-cx" value="${p.complexity}">
+            </div>
+            <div class="field">
+              <label>Speed (mm³/h)</label>
+              <input type="number" step="500" min="500" id="s-${pKey}-speed" value="${p.mmPerHour}">
+            </div>
+            ${paramFields}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const matsHTML = `
+    <div class="settings-section">
+      <h3>Materials</h3>
+      <div class="settings-body">
+        <table class="mats-table">
+          <thead><tr>
+            <th style="width:20%;">Key</th>
+            <th style="width:22%;">Name</th>
+            <th style="width:12%;">Density (g/cm³)</th>
+            <th style="width:14%;">Price / g (${g.currency})</th>
+            <th>Processes</th>
+            <th style="width:40px;"></th>
+          </tr></thead>
+          <tbody id="s-mats-body">
+            ${Object.entries(state.materials).map(([mKey, m]) => matRow(mKey, m)).join('')}
+          </tbody>
+        </table>
+        <button type="button" class="add-mat-btn" id="s-add-mat">+ Add material</button>
+      </div>
+    </div>
+  `;
+
+  body.innerHTML = generalHTML + processesHTML + matsHTML;
+
+  document.getElementById('s-add-mat').addEventListener('click', () => {
+    const tbody = document.getElementById('s-mats-body');
+    const key = 'm_' + Date.now().toString(36);
+    tbody.insertAdjacentHTML('beforeend', matRow(key, { name: 'New material', density: 1.0, pricePerG: 0.5, processes: [] }));
+    attachMatRowHandlers(tbody.lastElementChild);
+  });
+  document.querySelectorAll('#s-mats-body tr').forEach(attachMatRowHandlers);
+}
+
+function matRow(key, m) {
+  const procs = ['fdm', 'sla', 'sls', 'cnc'];
+  return `
+    <tr data-key="${key}">
+      <td><input type="text" class="m-key" value="${key}" readonly style="opacity:0.6;cursor:not-allowed;"></td>
+      <td><input type="text" class="m-name" value="${m.name}"></td>
+      <td><input type="number" step="0.01" min="0.1" class="m-density" value="${m.density}"></td>
+      <td><input type="number" step="0.01" min="0" class="m-price" value="${m.pricePerG}"></td>
+      <td>
+        <div class="proc-chips">
+          ${procs.map(p => `
+            <label><input type="checkbox" class="m-proc" data-p="${p}" ${m.processes.includes(p) ? 'checked' : ''}><span>${p.toUpperCase()}</span></label>
+          `).join('')}
+        </div>
+      </td>
+      <td><button type="button" class="row-del">✕</button></td>
+    </tr>
+  `;
+}
+
+function attachMatRowHandlers(tr) {
+  tr.querySelector('.row-del').addEventListener('click', () => tr.remove());
+}
+
+function collectSettings() {
+  const next = deepClone(DEFAULTS);
+
+  const currency = document.getElementById('s-currency').value.trim() || 'SAR';
+  const leadStd  = parseFloat(document.getElementById('s-lead-std').value) || 1.0;
+  const leadExp  = parseFloat(document.getElementById('s-lead-exp').value) || 1.4;
+  next.general.currency = currency;
+  next.general.leadMultipliers = { standard: leadStd, express: leadExp };
+  next.general.qtyTiers = [];
+  const tierRows = document.querySelectorAll('.s-tier-qty');
+  tierRows.forEach(q => {
+    const i = q.dataset.i;
+    const mult = document.querySelector(`.s-tier-mult[data-i="${i}"]`);
+    next.general.qtyTiers.push({
+      minQty: parseInt(q.value) || 1,
+      multiplier: parseFloat(mult.value) || 1.0
+    });
+  });
+
+  Object.keys(next.processes).forEach(pKey => {
+    const p = next.processes[pKey];
+    p.hourlyRate = parseFloat(document.getElementById(`s-${pKey}-rate`).value) || 0;
+    p.setupFee   = parseFloat(document.getElementById(`s-${pKey}-setup`).value) || 0;
+    p.complexity = parseFloat(document.getElementById(`s-${pKey}-cx`).value) || 1.0;
+    p.mmPerHour  = parseFloat(document.getElementById(`s-${pKey}-speed`).value) || 1000;
+    if (p.params) {
+      Object.keys(p.params).forEach(kKey => {
+        const el = document.getElementById(`s-${pKey}-default-${kKey}`);
+        if (!el) return;
+        if (p.params[kKey].type === 'select') p.params[kKey].default = el.value;
+        else p.params[kKey].default = parseFloat(el.value);
+      });
+    }
+  });
+
+  next.materials = {};
+  document.querySelectorAll('#s-mats-body tr').forEach(tr => {
+    const key = tr.dataset.key;
+    const name = tr.querySelector('.m-name').value.trim() || key;
+    const density = parseFloat(tr.querySelector('.m-density').value) || 1.0;
+    const pricePerG = parseFloat(tr.querySelector('.m-price').value) || 0;
+    const processes = [...tr.querySelectorAll('.m-proc:checked')].map(c => c.dataset.p);
+    next.materials[key] = { name, density, pricePerG, processes };
+  });
+
+  return next;
+}
+
+function applySettings(next) {
+  state = next;
+  saveSettings();
+  // Rebuild dependent UI
+  populateProcesses();
+  populateMaterials();
+  renderProcessParams();
+  updateQuote();
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'settings-save') {
+    applySettings(collectSettings());
+    showToast('✓ Settings saved');
+  }
+  if (e.target && e.target.id === 'settings-reset') {
+    if (!confirm('Reset all FF Engine settings to defaults?')) return;
+    applySettings(deepClone(DEFAULTS));
+    renderSettings();
+    showToast('Settings reset to defaults');
+  }
+});
+
+function mountSeekMake() {
+  const host = document.getElementById('seekmake-pane');
+  if (!host || host.dataset.mounted === '1') return;
+  const url = host.dataset.embedUrl;
+  if (!url) return;
+  host.innerHTML = '';
+  const iframe = document.createElement('iframe');
+  iframe.id = 'seekmake-embed-iq';
+  iframe.className = 'seekmake-embed-iq';
+  iframe.src = url;
+  iframe.title = 'SeekMake instant quote';
+  iframe.setAttribute('sandbox', 'allow-downloads allow-scripts allow-same-origin allow-forms allow-popups');
+  iframe.setAttribute('scrolling', 'auto');
+  iframe.style.cssText = 'width:100%;min-height:100%;height:auto;border:0;display:block;';
+  host.appendChild(iframe);
+
+  if (!document.querySelector('script[data-seekmake-iq]')) {
+    const script = document.createElement('script');
+    script.src = 'https://seekmake.com/assets/public/iq-api-latest.js';
+    script.dataset.seekmakeIq = '1';
+    script.async = true;
+    document.body.appendChild(script);
+  }
+
+  host.dataset.mounted = '1';
+}
+
+// Recompute viewer size after layout settles
+setTimeout(resize, 100);
+window.addEventListener('load', resize);
+</script>
+
+</body>
+</html>

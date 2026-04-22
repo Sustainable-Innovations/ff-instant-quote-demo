@@ -1,0 +1,20 @@
+# Internal / unpublished materials
+Instant_Quoting_Services_Executive_Review.pptx
+comparison research.md
+FF Diagram.drawio.png
+*.drawio
+*.drawio.png
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build / tooling
+node_modules/
+dist/
+.cache/

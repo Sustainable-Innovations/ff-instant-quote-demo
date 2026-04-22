@@ -42,13 +42,10 @@
     z-index: 100;
   }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .brand .mark {
-    width: 34px; height: 34px; background: var(--orange);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'IBM Plex Mono', monospace; font-weight: 700;
-    color: #fff; font-size: 15px; letter-spacing: 1px;
+  .brand .brand-logo {
+    height: 26px; width: auto; display: block;
+    filter: invert(1) brightness(1.05);
   }
-  .brand .name { font-weight: 600; font-size: 15px; letter-spacing: 0.3px; }
   .brand .sub { color: var(--muted); font-size: 13px; margin-left: 10px; border-left: 1px solid var(--divider); padding-left: 10px; }
   nav.topbar .actions { display: flex; gap: 8px; }
   .chip {
@@ -497,8 +494,7 @@
 
 <nav class="topbar">
   <div class="brand">
-    <div class="mark">FF</div>
-    <div class="name">Flex Factory</div>
+    <img src="FF_logo.svg" alt="Flex Factory" class="brand-logo">
     <div class="sub">Instant Quote</div>
   </div>
   <div class="actions">

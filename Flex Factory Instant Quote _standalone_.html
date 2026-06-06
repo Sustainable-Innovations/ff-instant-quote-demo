@@ -4,39 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flex Factory — Instant Quote</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="description" content="Upload an STL or STEP file and get an instant, indicative manufacturing quote — FDM, SLA, SLS 3D printing and CNC machining. Geometry is analysed entirely in your browser.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Flex Factory — Instant Quote">
+<meta property="og:description" content="Upload a 3D model and get an instant, indicative manufacturing quote in seconds.">
+<meta name="twitter:card" content="summary">
 <style>
   :root {
-    --bg: #1a1a1a;
-    --bg-elev: #222222;
-    --bg-elev-2: #2a2a2a;
-    --divider: #3a3e44;
-    --text: #e8e8e8;
-    --muted: #8a8f96;
-    --orange: #e84d1a;
-    --orange-hover: #ff5e29;
-    --orange-dim: #7a2a10;
-    --danger: #ff6b6b;
-    --ok: #4ade80;
+    --bg: #F6F6F6;          /* primary (60%) — off-white background */
+    --bg-elev: #FFFFFF;     /* elevated panels / cards */
+    --bg-elev-2: #FFFFFF;   /* secondary surface (use border for separation) */
+    --divider: #CECECB;     /* brand light grey borders */
+    --text: #070F41;        /* brand navy — foreground (30%) */
+    --muted: #5B6172;       /* derived navy-grey for secondary text */
+    --accent: #0135F4;      /* brand blue — structural fills + standard actions */
+    --accent-hover: #0C3997;/* darker brand blue for hover/pressed */
+    --accent-dim: #D8DEFE;  /* light blue tint for subtle borders/fills */
+    --lime: #E1FF05;        /* brand lime — high-attention conversion accent */
+    --lime-hover: #CBE600;  /* deeper lime for hover/pressed */
+    --danger: #D62828;      /* functional red (no brand red exists) */
+    --ok: #16A34A;          /* functional green darkened for light bg */
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     overflow: hidden;
   }
-  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  .mono { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
 
   /* ---------- Top nav ---------- */
   nav.topbar {
     position: fixed; top: 0; left: 0; right: 0; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 24px;
-    background: rgba(26,26,26,0.85);
+    background: rgba(246,246,246,0.85);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--divider);
     z-index: 100;
@@ -44,17 +49,19 @@
   .brand { display: flex; align-items: center; gap: 12px; }
   .brand .brand-logo {
     height: 26px; width: auto; display: block;
-    filter: invert(1) brightness(1.05);
   }
   .brand .sub { color: var(--muted); font-size: 13px; margin-left: 10px; border-left: 1px solid var(--divider); padding-left: 10px; }
   nav.topbar .actions { display: flex; gap: 8px; }
   .chip {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
     color: var(--muted); border: 1px solid var(--divider);
-    padding: 6px 10px; border-radius: 2px;
+    padding: 6px 12px; border-radius: 100px;
   }
-  .chip.live { color: var(--orange); border-color: var(--orange-dim); }
+  .chip.live {
+    background: var(--lime); color: var(--text);
+    border-color: var(--lime); font-weight: 700;
+  }
 
   /* ---------- Main layout ---------- */
   main {
@@ -79,7 +86,7 @@
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
     background: var(--bg-elev); color: var(--muted);
-    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px;
   }
 
   /* When SeekMake is active, collapse the right panel so the iframe owns the whole area */
@@ -95,7 +102,7 @@
   .tab-floating {
     position: fixed; top: 16px; right: 16px;
     display: none; z-index: 200;
-    background: rgba(26,26,26,0.92); backdrop-filter: blur(8px);
+    background: rgba(246,246,246,0.92); backdrop-filter: blur(8px);
     border: 1px solid var(--divider);
   }
   main.seekmake-active ~ .tab-floating, main.settings-active ~ .tab-floating { display: flex; }
@@ -121,11 +128,11 @@
     margin-bottom: 28px; max-width: 1100px;
   }
   #settings-pane h1 {
-    font-size: 22px; font-weight: 600; letter-spacing: -0.3px;
+    font-size: 24px; font-weight: 700; letter-spacing: -0.6px;
   }
   #settings-pane .sub {
     color: var(--muted); font-size: 13px; margin-top: 4px;
-    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.3px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; letter-spacing: 0.3px;
   }
   #settings-pane .settings-actions { display: flex; gap: 8px; }
 
@@ -136,9 +143,9 @@
     margin-bottom: 20px;
   }
   #settings-pane .settings-section > h3 {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 11px; font-weight: 500; letter-spacing: 1.2px;
-    text-transform: uppercase; color: var(--orange);
+    text-transform: uppercase; color: var(--accent);
     padding: 14px 20px; border-bottom: 1px solid var(--divider);
   }
   #settings-pane .settings-body { padding: 20px; }
@@ -151,12 +158,12 @@
   .settings-grid .field label { margin-bottom: 6px; }
   .settings-grid .field input {
     padding: 8px 10px; font-size: 13px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 
   .mats-table {
     width: 100%; border-collapse: collapse;
-    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px;
   }
   .mats-table th, .mats-table td {
     text-align: left; padding: 8px 10px;
@@ -173,56 +180,56 @@
     font-family: inherit; font-size: 12px;
     outline: none;
   }
-  .mats-table input:focus { border-color: var(--orange); }
+  .mats-table input:focus { border-color: var(--accent); }
   .mats-table .proc-chips { display: flex; gap: 4px; flex-wrap: wrap; }
   .mats-table .proc-chips label {
     font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;
     color: var(--muted); border: 1px solid var(--divider);
-    padding: 3px 8px; cursor: pointer; user-select: none;
+    padding: 3px 10px; border-radius: 100px; cursor: pointer; user-select: none;
   }
   .mats-table .proc-chips input[type="checkbox"] { display: none; }
-  .mats-table .proc-chips input[type="checkbox"]:checked + span { color: var(--orange); }
-  .mats-table .proc-chips label:has(input:checked) { border-color: var(--orange); }
+  .mats-table .proc-chips input[type="checkbox"]:checked + span { color: var(--accent); }
+  .mats-table .proc-chips label:has(input:checked) { border-color: var(--accent); }
   .mats-table .row-del {
     background: transparent; border: 1px solid var(--divider); color: var(--muted);
     padding: 4px 8px; font-family: inherit; font-size: 11px; cursor: pointer;
   }
   .mats-table .row-del:hover { border-color: var(--danger); color: var(--danger); }
   .add-mat-btn {
-    margin-top: 12px; background: transparent; color: var(--orange);
-    border: 1px dashed var(--orange); padding: 8px 14px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    margin-top: 12px; background: transparent; color: var(--accent);
+    border: 1px dashed var(--accent); padding: 8px 14px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
   }
-  .add-mat-btn:hover { background: rgba(232,77,26,0.08); }
+  .add-mat-btn:hover { background: rgba(1,53,244,0.08); }
 
   .btn-ghost {
     background: transparent; color: var(--text);
     border: 1px solid var(--divider); padding: 9px 14px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
   }
-  .btn-ghost:hover { border-color: var(--orange); color: var(--orange); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .btn-solid {
-    background: var(--orange); color: #fff;
+    background: var(--accent); color: #fff;
     border: none; padding: 9px 14px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
   }
-  .btn-solid:hover { background: var(--orange-hover); }
+  .btn-solid:hover { background: var(--accent-hover); }
   .tab-floating button {
     background: transparent; color: var(--muted);
     border: none; padding: 10px 16px; cursor: pointer;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     letter-spacing: 1px; text-transform: uppercase;
   }
   .tab-floating button + button { border-left: 1px solid var(--divider); }
-  .tab-floating button.active { color: var(--orange); }
+  .tab-floating button.active { color: var(--accent); }
   .tab-floating .dot {
     display: inline-block; width: 6px; height: 6px; border-radius: 50%;
     background: var(--muted); margin-right: 6px; vertical-align: middle;
   }
-  .tab-floating button.active .dot { background: var(--orange); }
+  .tab-floating button.active .dot { background: var(--accent); }
 
   /* ---------- Upload state ---------- */
   #upload-pane {
@@ -244,63 +251,63 @@
     cursor: pointer;
   }
   .drop:hover, .drop.drag {
-    border-color: var(--orange);
-    background: #241c18;
+    border-color: var(--accent);
+    background: #EEF1FE;
   }
   .drop .icon {
-    width: 56px; height: 56px; margin: 0 auto 20px;
-    border: 2px solid var(--orange); display: flex; align-items: center; justify-content: center;
-    color: var(--orange); font-size: 28px; font-weight: 700;
-    font-family: 'IBM Plex Mono', monospace;
+    width: 56px; height: 56px; margin: 0 auto 20px; border-radius: 50%;
+    border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 28px; font-weight: 700;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
-  .drop h1 { font-size: 24px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.3px; }
+  .drop h1 { font-size: 30px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.8px; line-height: 1.1; }
   .drop p { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
   .drop .cta {
     display: inline-block;
-    background: var(--orange); color: #fff;
-    padding: 12px 22px; font-weight: 600; font-size: 14px;
-    letter-spacing: 0.3px;
+    background: var(--accent); color: #fff;
+    padding: 12px 24px; font-weight: 700; font-size: 13px;
+    letter-spacing: 0.6px; text-transform: uppercase;
     border: none; cursor: pointer;
     font-family: inherit;
   }
-  .drop .cta:hover { background: var(--orange-hover); }
+  .drop .cta:hover { background: var(--accent-hover); }
   .drop .hint {
-    margin-top: 20px; font-family: 'IBM Plex Mono', monospace;
+    margin-top: 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 11px; color: var(--muted); letter-spacing: 0.4px;
   }
   .drop .error {
     margin-top: 18px; color: var(--danger); font-size: 13px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     display: none;
   }
   .drop .error.show { display: block; }
 
   /* ---------- Viewer ---------- */
-  #viewer-pane { position: relative; background: #141414; overflow: hidden; }
+  #viewer-pane { position: relative; background: #ECECEE; overflow: hidden; }
   #viewer-canvas { width: 100%; height: 100%; display: block; }
   .viewer-overlay {
     position: absolute; top: 16px; left: 16px;
     display: flex; gap: 8px; flex-wrap: wrap;
   }
   .viewer-overlay .chip.file {
-    background: rgba(26,26,26,0.8); color: var(--text);
+    background: rgba(255,255,255,0.8); color: var(--text);
     border-color: var(--divider);
     max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .viewer-hint {
     position: absolute; bottom: 16px; left: 16px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     color: var(--muted); letter-spacing: 0.4px;
   }
   .reset-btn {
     position: absolute; top: 16px; right: 16px;
-    background: rgba(26,26,26,0.85); color: var(--text);
+    background: rgba(246,246,246,0.85); color: var(--text);
     border: 1px solid var(--divider);
     padding: 8px 14px; cursor: pointer;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     letter-spacing: 0.5px; text-transform: uppercase;
   }
-  .reset-btn:hover { border-color: var(--orange); color: var(--orange); }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* ---------- Right panel ---------- */
   #side-pane {
@@ -315,12 +322,12 @@
   .panel-section { padding: 24px; border-bottom: 1px solid var(--divider); }
   .panel-section:last-child { border-bottom: none; }
   .panel-section h2 {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 11px; font-weight: 500; letter-spacing: 1.2px;
     color: var(--muted); text-transform: uppercase;
     margin-bottom: 16px;
   }
-  .readout { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .readout { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; }
   .readout .label { color: var(--muted); }
   .readout .value { color: var(--text); text-align: right; font-weight: 500; }
 
@@ -328,7 +335,7 @@
   .field:last-child { margin-bottom: 0; }
   .field label {
     display: block; font-size: 12px; color: var(--muted);
-    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.5px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; letter-spacing: 0.5px;
     text-transform: uppercase; margin-bottom: 8px;
   }
   select, input[type="number"] {
@@ -337,7 +344,7 @@
     font-family: inherit; font-size: 14px;
     outline: none;
   }
-  select:focus, input[type="number"]:focus { border-color: var(--orange); }
+  select:focus, input[type="number"]:focus { border-color: var(--accent); }
   .seg {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0;
     border: 1px solid var(--divider);
@@ -348,57 +355,65 @@
     font-family: inherit; font-size: 13px; cursor: pointer;
   }
   .seg button + button { border-left: 1px solid var(--divider); }
-  .seg button.active { background: var(--orange); color: #fff; }
+  .seg button.active { background: var(--accent); color: #fff; }
 
   .quote-hero {
-    padding: 24px;
-    background: linear-gradient(180deg, #241c18 0%, var(--bg-elev) 100%);
+    position: relative; overflow: hidden;
+    padding: 26px 24px;
+    background: var(--accent);
     border-bottom: 1px solid var(--divider);
   }
+  /* folded-corner brand motif (echoes the featured cards / promo band) */
+  .quote-hero::before {
+    content: ""; position: absolute; top: 0; left: 0;
+    width: 0; height: 0;
+    border-top: 30px solid var(--lime);
+    border-right: 30px solid transparent;
+  }
   .quote-hero .total {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 40px; font-weight: 600;
-    color: var(--orange); letter-spacing: -1px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 44px; font-weight: 700;
+    color: var(--lime); letter-spacing: -1.5px;
     line-height: 1;
   }
   .quote-hero .unit {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px; color: var(--muted); margin-top: 6px; letter-spacing: 0.4px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 8px; letter-spacing: 0.4px;
   }
   .quote-hero .disclaimer {
-    margin-top: 14px; font-size: 11px; color: var(--muted);
-    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.3px;
+    margin-top: 14px; font-size: 11px; color: rgba(255,255,255,0.7);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; letter-spacing: 0.3px;
   }
 
-  .breakdown { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .breakdown { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; }
   .breakdown .row { display: flex; justify-content: space-between; padding: 5px 0; color: var(--muted); }
   .breakdown .row.total-row { border-top: 1px solid var(--divider); margin-top: 8px; padding-top: 10px; color: var(--text); font-weight: 600; }
 
   .cta-primary {
-    width: 100%; background: var(--orange); color: #fff;
+    width: 100%; background: var(--lime); color: var(--text);
     border: none; padding: 14px; cursor: pointer;
-    font-family: inherit; font-weight: 600; font-size: 14px;
-    letter-spacing: 0.4px;
+    font-family: inherit; font-weight: 700; font-size: 14px;
+    letter-spacing: 0.6px; text-transform: uppercase;
   }
-  .cta-primary:hover { background: var(--orange-hover); }
+  .cta-primary:hover { background: var(--lime-hover); }
   .cta-secondary {
     width: 100%; background: transparent; color: var(--text);
     border: 1px solid var(--divider); padding: 12px; cursor: pointer;
     font-family: inherit; font-size: 13px; margin-top: 8px;
   }
-  .cta-secondary:hover { border-color: var(--orange); color: var(--orange); }
+  .cta-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
   .warn {
     margin-top: 10px; padding: 10px 12px;
-    background: #2a1f12; border-left: 2px solid var(--orange);
-    font-size: 12px; font-family: 'IBM Plex Mono', monospace;
-    color: #f0c69a; line-height: 1.4;
+    background: var(--accent-dim); border-left: 2px solid var(--accent);
+    font-size: 12px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: var(--text); line-height: 1.4;
   }
 
   .loading-pane {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(20,20,20,0.9);
+    background: rgba(246,246,246,0.9);
     z-index: 60;
     flex-direction: column; gap: 14px;
   }
@@ -406,13 +421,13 @@
   .spinner {
     width: 40px; height: 40px;
     border: 2px solid var(--divider);
-    border-top-color: var(--orange);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-pane .txt {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 12px; color: var(--muted); letter-spacing: 0.5px;
     text-transform: uppercase;
   }
@@ -420,9 +435,9 @@
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
     background: var(--bg-elev-2); color: var(--text);
-    border: 1px solid var(--orange);
+    border: 1px solid var(--accent);
     padding: 14px 22px; font-size: 14px;
-    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.3px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; letter-spacing: 0.3px;
     opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease;
     z-index: 500; pointer-events: none;
     border-left-width: 3px;
@@ -437,18 +452,18 @@
   .tabs button {
     flex: 1; background: transparent; color: var(--muted);
     border: none; padding: 14px 12px; cursor: pointer;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     letter-spacing: 1px; text-transform: uppercase;
     border-bottom: 2px solid transparent;
     position: relative;
   }
   .tabs button:hover { color: var(--text); }
-  .tabs button.active { color: var(--orange); border-bottom-color: var(--orange); }
+  .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tabs button .dot {
     display: inline-block; width: 6px; height: 6px; border-radius: 50%;
     background: var(--muted); margin-right: 6px; vertical-align: middle;
   }
-  .tabs button.active .dot { background: var(--orange); }
+  .tabs button.active .dot { background: var(--accent); }
   .tab-panel { display: none; flex-direction: column; flex: 1; }
   .tab-panel.active { display: flex; }
 
@@ -458,13 +473,13 @@
     padding: 16px; gap: 14px;
   }
   .embed-note {
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
     color: var(--muted); line-height: 1.55; letter-spacing: 0.3px;
     padding: 10px 12px; background: var(--bg);
-    border-left: 2px solid var(--orange);
+    border-left: 2px solid var(--accent);
   }
   .embed-note code {
-    color: var(--orange); background: transparent;
+    color: var(--accent); background: transparent;
     font-family: inherit; font-size: 11px;
   }
   .embed-frame {
@@ -480,21 +495,94 @@
     text-align: center; padding: 32px 24px; gap: 12px;
   }
   .embed-placeholder .big {
-    font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px;
     color: var(--text); letter-spacing: 0.4px;
   }
   .embed-placeholder .small {
     font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 320px;
   }
-  .embed-placeholder a { color: var(--orange); text-decoration: none; }
+  .embed-placeholder a { color: var(--accent); text-decoration: none; }
   .embed-placeholder a:hover { text-decoration: underline; }
+
+  /* ---------- Lead-capture modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 600;
+    background: rgba(7,15,65,0.45); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    position: relative; width: 100%; max-width: 440px;
+    background: var(--bg-elev); border: 1px solid var(--divider);
+    padding: 28px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+  .modal .modal-sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  .modal-close {
+    position: absolute; top: 12px; right: 14px;
+    background: transparent; border: none; color: var(--muted);
+    font-size: 24px; line-height: 1; cursor: pointer; padding: 4px;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-summary {
+    background: var(--bg); border-left: 2px solid var(--accent);
+    padding: 10px 12px; font-size: 12px; color: var(--muted);
+    line-height: 1.5; margin-bottom: 16px; word-break: break-word;
+  }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label {
+    display: block; font-size: 12px; color: var(--muted);
+    letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .modal-field input, .modal-field textarea {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--divider); padding: 10px 12px;
+    font-family: inherit; font-size: 14px; outline: none; resize: vertical;
+  }
+  .modal-field input:focus, .modal-field textarea:focus { border-color: var(--accent); }
+  .modal-error { color: var(--danger); font-size: 13px; margin-bottom: 12px; display: none; }
+  .modal-error.show { display: block; }
+
+  /* ---------- Print quote sheet ---------- */
+  #print-sheet { display: none; }
+  @media print {
+    @page { margin: 16mm; }
+    html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+    body > *:not(#print-sheet) { display: none !important; }
+    #print-sheet {
+      display: block !important; color: #000;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    #print-sheet .ps-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 2px solid #0135F4; padding-bottom: 12px; margin-bottom: 20px;
+    }
+    #print-sheet .ps-head img { height: 34px; }
+    #print-sheet .ps-meta { text-align: right; font-size: 12px; color: #444; line-height: 1.5; }
+    #print-sheet h1 { font-size: 22px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.4px; }
+    #print-sheet h2 {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+      color: #0135F4; margin: 22px 0 8px;
+    }
+    #print-sheet table.ps-info { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #print-sheet table.ps-info td { padding: 5px 0; border-bottom: 1px solid #eee; }
+    #print-sheet table.ps-info td:first-child { color: #666; width: 42%; }
+    #print-sheet .breakdown { font-size: 13px; }
+    #print-sheet .breakdown .row { display: flex; justify-content: space-between; padding: 4px 0; color: #000; }
+    #print-sheet .breakdown .row.total-row { border-top: 1px solid #000; margin-top: 6px; padding-top: 8px; font-weight: 700; }
+    #print-sheet .ps-total {
+      margin-top: 18px; padding-top: 12px; border-top: 2px solid #0135F4;
+      display: flex; justify-content: space-between; font-size: 20px; font-weight: 700;
+    }
+    #print-sheet .ps-disc { margin-top: 24px; font-size: 11px; color: #666; line-height: 1.5; }
+  }
 </style>
 </head>
 <body>
 
 <nav class="topbar">
   <div class="brand">
-    <img src="FF_logo.svg" alt="Flex Factory" class="brand-logo">
+    <img src="FF_logo_blue.svg" alt="Flex Factory" class="brand-logo">
     <div class="sub">Instant Quote</div>
   </div>
   <div class="actions">
@@ -520,7 +608,7 @@
       <div class="drop" id="drop-zone">
         <div class="icon">↑</div>
         <h1>Drop a 3D model to get an instant quote</h1>
-        <p>Upload an <span class="mono" style="color:var(--orange)">.stl</span> or <span class="mono" style="color:var(--orange)">.step</span> file. We'll analyse the geometry in your browser and return an indicative quote in seconds.</p>
+        <p>Upload an <span class="mono" style="color:var(--accent)">.stl</span> or <span class="mono" style="color:var(--accent)">.step</span> file. We'll analyse the geometry in your browser and return an indicative quote in seconds.</p>
         <button class="cta" id="browse-btn" type="button">Browse files</button>
         <input type="file" id="file-input" accept=".stl,.step,.stp" style="display:none;">
         <div class="hint">STL · STEP · STP · up to 100 MB</div>
@@ -576,6 +664,14 @@
     <div class="panel-section" id="config-section" style="display:none;">
       <h2>Configuration</h2>
       <div class="field">
+        <label for="f-units">Source file units</label>
+        <select id="f-units">
+          <option value="mm" selected>Millimetres (mm)</option>
+          <option value="cm">Centimetres (cm)</option>
+          <option value="in">Inches (in)</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="f-process">Process</label>
         <select id="f-process"></select>
       </div>
@@ -600,17 +696,19 @@
     <div class="panel-section" id="breakdown-section" style="display:none;">
       <h2>Breakdown</h2>
       <div class="breakdown" id="breakdown"></div>
+      <div class="warn" id="size-warn" style="display:none;"></div>
       <button class="cta-primary" id="request-btn" style="margin-top:18px;">Request supplier match</button>
+      <button class="cta-secondary" id="print-btn">Download / print quote</button>
       <button class="cta-secondary" id="new-btn">Upload a different file</button>
     </div>
 
     <div class="panel-section" id="empty-side" style="padding: 40px 24px;">
       <h2>How it works</h2>
       <div style="font-size: 13px; line-height: 1.7; color: var(--muted);">
-        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">1.</span> Upload an STL or STEP file.</p>
-        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">2.</span> We compute volume, surface area, and bounding box entirely in your browser — your file never leaves your device.</p>
-        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">3.</span> Pick a process and material to see an instant indicative quote.</p>
-        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--orange)">4.</span> Submit to get matched with a Flex Factory supplier.</p>
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--accent)">1.</span> Upload an STL or STEP file.</p>
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--accent)">2.</span> We compute volume, surface area, and bounding box entirely in your browser — your file never leaves your device.</p>
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--accent)">3.</span> Pick a process and material to see an instant indicative quote.</p>
+        <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--accent)">4.</span> Submit to get matched with a Flex Factory supplier.</p>
         <p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider); color: var(--muted); font-size: 12px;">Switch to the <b style="color:var(--text)">SeekMake</b> tab to compare FF's quote against a live third-party quoting service for the same file.</p>
       </div>
     </div>
@@ -634,6 +732,33 @@
   <button type="button" class="tab-btn-float" data-tab="settings"><span class="dot"></span>Settings</button>
   <button type="button" class="tab-btn-float" data-tab="seekmake"><span class="dot"></span>SeekMake</button>
 </div>
+
+<!-- Lead-capture modal -->
+<div class="modal-overlay" id="lead-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title">
+    <button class="modal-close" id="lead-close" type="button" aria-label="Close">×</button>
+    <h2 id="lead-modal-title">Request supplier match</h2>
+    <p class="modal-sub">We'll match your part with a vetted Flex Factory supplier and email you a firm quote.</p>
+    <div class="modal-summary mono" id="lead-summary"></div>
+    <div class="modal-field">
+      <label for="lead-name">Name</label>
+      <input type="text" id="lead-name" placeholder="Your name" autocomplete="name">
+    </div>
+    <div class="modal-field">
+      <label for="lead-email">Email</label>
+      <input type="email" id="lead-email" placeholder="you@company.com" autocomplete="email" required>
+    </div>
+    <div class="modal-field">
+      <label for="lead-notes">Notes (optional)</label>
+      <textarea id="lead-notes" rows="3" placeholder="Tolerances, finish, deadline…"></textarea>
+    </div>
+    <div class="modal-error" id="lead-error"></div>
+    <button class="cta-primary" id="lead-submit" type="button">Send request</button>
+  </div>
+</div>
+
+<!-- Printable quote sheet (hidden on screen) -->
+<div id="print-sheet" aria-hidden="true"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -663,20 +788,25 @@ const DEFAULTS = {
     ],
     leadMultipliers: { standard: 1.00, express: 1.40 }
   },
+  // density = g/cm³ (physical); pricePerG = effective billed material cost in SAR/g.
+  // For FDM/SLA/SLS this is ~2× retail spool/resin/powder cost to cover supports,
+  // purge, failed builds and (for SLS) un-sintered powder refresh. For CNC metals it is
+  // the billet stock cost loaded ~2.5× for the material machined away (we bill on part
+  // weight, not stock weight). Approx $/kg shown = pricePerG × 1000 ÷ 3.75.
   materials: {
-    pla:         { name: 'PLA',            density: 1.24, pricePerG: 0.19,  processes: ['fdm'] },
-    petg:        { name: 'PETG',           density: 1.27, pricePerG: 0.26,  processes: ['fdm'] },
-    abs:         { name: 'ABS',            density: 1.04, pricePerG: 0.30,  processes: ['fdm'] },
-    asa:         { name: 'ASA',            density: 1.07, pricePerG: 0.38,  processes: ['fdm'] },
-    flex_tpu:    { name: 'Flex TPU',       density: 1.20, pricePerG: 0.56,  processes: ['fdm'] },
-    nylon_fdm:   { name: 'Nylon 12 (FDM)', density: 1.01, pricePerG: 0.68,  processes: ['fdm'] },
-    nylon_sls:   { name: 'Nylon 12 (SLS)', density: 1.01, pricePerG: 0.68,  processes: ['sls'] },
-    resin_std:   { name: 'Standard resin', density: 1.15, pricePerG: 0.83,  processes: ['sla'] },
-    resin_tough: { name: 'Tough resin',    density: 1.18, pricePerG: 1.31,  processes: ['sla'] },
-    alu:         { name: 'Aluminium 6061', density: 2.70, pricePerG: 0.68,  processes: ['cnc'] },
-    steel_mild:  { name: 'Mild steel',     density: 7.85, pricePerG: 0.38,  processes: ['cnc'] },
-    steel_ss304: { name: 'Stainless 304',  density: 8.00, pricePerG: 0.94,  processes: ['cnc'] },
-    brass:       { name: 'Brass',          density: 8.50, pricePerG: 1.13,  processes: ['cnc'] }
+    pla:         { name: 'PLA',            density: 1.24, pricePerG: 0.17,  processes: ['fdm'] }, // ~$45/kg
+    petg:        { name: 'PETG',           density: 1.27, pricePerG: 0.20,  processes: ['fdm'] }, // ~$53/kg
+    abs:         { name: 'ABS',            density: 1.04, pricePerG: 0.19,  processes: ['fdm'] }, // ~$51/kg
+    asa:         { name: 'ASA',            density: 1.07, pricePerG: 0.25,  processes: ['fdm'] }, // ~$67/kg
+    flex_tpu:    { name: 'Flex TPU',       density: 1.20, pricePerG: 0.34,  processes: ['fdm'] }, // ~$91/kg
+    nylon_fdm:   { name: 'Nylon 12 (FDM)', density: 1.01, pricePerG: 0.40,  processes: ['fdm'] }, // ~$107/kg
+    nylon_sls:   { name: 'Nylon 12 (SLS)', density: 1.01, pricePerG: 0.68,  processes: ['sls'] }, // ~$181/kg (powder + refresh waste)
+    resin_std:   { name: 'Standard resin', density: 1.15, pricePerG: 0.35,  processes: ['sla'] }, // ~$93/kg
+    resin_tough: { name: 'Tough resin',    density: 1.18, pricePerG: 0.60,  processes: ['sla'] }, // ~$160/kg
+    alu:         { name: 'Aluminium 6061', density: 2.70, pricePerG: 0.08,  processes: ['cnc'] }, // ~$21/kg
+    steel_mild:  { name: 'Mild steel',     density: 7.85, pricePerG: 0.05,  processes: ['cnc'] }, // ~$13/kg
+    steel_ss304: { name: 'Stainless 304',  density: 8.00, pricePerG: 0.12,  processes: ['cnc'] }, // ~$32/kg
+    brass:       { name: 'Brass',          density: 8.50, pricePerG: 0.13,  processes: ['cnc'] }  // ~$35/kg
   },
   processes: {
     fdm: {
@@ -767,12 +897,13 @@ function quantityDiscount(qty) {
   return 1.0;
 }
 
-function fmtPrice(n) { return `${state.general.currency} ${n.toFixed(2)}`; }
+const _numFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtPrice(n) { return `${state.general.currency} ${_numFmt.format(n)}`; }
 
 // ---------- Three.js setup ----------
 const canvas = document.getElementById('viewer-canvas');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x141414);
+scene.background = new THREE.Color(0xECECEE);
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100000);
 camera.position.set(100, 100, 100);
@@ -789,12 +920,12 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.35));
 const key = new THREE.DirectionalLight(0xffffff, 0.9);
 key.position.set(1, 1.5, 1);
 scene.add(key);
-const rim = new THREE.DirectionalLight(0xe84d1a, 0.45);
+const rim = new THREE.DirectionalLight(0x0135f4, 0.45);
 rim.position.set(-1, 0.5, -1);
 scene.add(rim);
 
 // Grid
-const grid = new THREE.GridHelper(400, 20, 0x3a3e44, 0x2a2a2a);
+const grid = new THREE.GridHelper(400, 20, 0xCECECB, 0xDDDDDD);
 grid.material.opacity = 0.35; grid.material.transparent = true;
 scene.add(grid);
 
@@ -807,17 +938,58 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  requestRender();
 }
+
+// ---------- Render-on-demand ----------
+// Render only when something changes (camera move, damping inertia, resize, new mesh)
+// instead of a constant 60fps loop — saves GPU/battery when idle or when the viewer
+// is hidden behind the Settings/SeekMake tabs.
+let renderRequested = false;
+function requestRender() {
+  if (renderRequested) return;
+  renderRequested = true;
+  requestAnimationFrame(renderFrame);
+}
+function renderFrame() {
+  renderRequested = false;
+  controls.update();                 // applies damping; emits 'change' until it settles
+  renderer.render(scene, camera);
+}
+controls.addEventListener('change', requestRender);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) requestRender(); });
 window.addEventListener('resize', resize);
 resize();
-
-(function loop() {
-  requestAnimationFrame(loop);
-  controls.update();
-  renderer.render(scene, camera);
-})();
+requestRender();
 
 // ---------- Geometry analysis ----------
+// Topological watertight test: weld duplicated STL vertices by position, then check that
+// every edge is shared by exactly 2 triangles (manifold & closed). Returns true/false, or
+// null when the mesh is too large to verify cheaply. Far more reliable than sign-of-volume.
+function computeWatertight(pos, diag) {
+  const n = pos.count;
+  if (n > 900000) return null;            // ~300k triangles — skip to keep the UI responsive
+  const arr = pos.array;
+  const g = (diag * 1e-5) || 1e-6;        // weld tolerance (~1µm for a 100mm part)
+  const idOf = new Map();
+  const vid = new Int32Array(n);
+  let next = 0;
+  for (let v = 0; v < n; v++) {
+    const key = Math.round(arr[3*v]/g) + ',' + Math.round(arr[3*v+1]/g) + ',' + Math.round(arr[3*v+2]/g);
+    let id = idOf.get(key);
+    if (id === undefined) { id = next++; idOf.set(key, id); }
+    vid[v] = id;
+  }
+  const edges = new Map();
+  const bump = (p, q) => {
+    const k = p < q ? (p + '_' + q) : (q + '_' + p);
+    edges.set(k, (edges.get(k) || 0) + 1);
+  };
+  for (let t = 0; t < n; t += 3) bump(vid[t], vid[t+1]), bump(vid[t+1], vid[t+2]), bump(vid[t+2], vid[t]);
+  for (const count of edges.values()) if (count !== 2) return false; // boundary (1) or non-manifold (>2)
+  return true;
+}
+
 function analyzeGeometry(geometry) {
   geometry.computeBoundingBox();
   const bbox = geometry.boundingBox;
@@ -832,18 +1004,19 @@ function analyzeGeometry(geometry) {
   let surface = 0;
   const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
   const cross = new THREE.Vector3(), edge1 = new THREE.Vector3(), edge2 = new THREE.Vector3();
+  const vCross = new THREE.Vector3(); // reused per triangle — avoids one allocation per face
   for (let i = 0; i < pos.count; i += 3) {
     vA.fromBufferAttribute(pos, i);
     vB.fromBufferAttribute(pos, i + 1);
     vC.fromBufferAttribute(pos, i + 2);
-    volume += vA.dot(new THREE.Vector3().crossVectors(vB, vC)) / 6;
+    volume += vA.dot(vCross.crossVectors(vB, vC)) / 6;
     edge1.subVectors(vB, vA);
     edge2.subVectors(vC, vA);
     cross.crossVectors(edge1, edge2);
     surface += cross.length() / 2;
   }
 
-  const watertight = volume > 0;
+  const watertight = computeWatertight(pos, size.length());
   return {
     volume_mm3: Math.abs(volume),
     surface_mm2: surface,
@@ -880,6 +1053,7 @@ const ui = {
   rWeight: document.getElementById('r-weight'),
   meshWarn: document.getElementById('mesh-warn'),
 
+  fUnits: document.getElementById('f-units'),
   fProcess: document.getElementById('f-process'),
   fMaterial: document.getElementById('f-material'),
   fQty: document.getElementById('f-qty'),
@@ -888,14 +1062,55 @@ const ui = {
   totalPrice: document.getElementById('total-price'),
   unitPrice: document.getElementById('unit-price'),
   breakdown: document.getElementById('breakdown'),
+  sizeWarn: document.getElementById('size-warn'),
 
   requestBtn: document.getElementById('request-btn'),
+  printBtn: document.getElementById('print-btn'),
   newBtn: document.getElementById('new-btn'),
-  toast: document.getElementById('toast')
+  toast: document.getElementById('toast'),
+
+  leadModal: document.getElementById('lead-modal'),
+  leadClose: document.getElementById('lead-close'),
+  leadSummary: document.getElementById('lead-summary'),
+  leadName: document.getElementById('lead-name'),
+  leadEmail: document.getElementById('lead-email'),
+  leadNotes: document.getElementById('lead-notes'),
+  leadError: document.getElementById('lead-error'),
+  leadSubmit: document.getElementById('lead-submit'),
+  printSheet: document.getElementById('print-sheet')
 };
 
-let currentAnalysis = null;
+let currentAnalysis = null;   // geometry scaled to the selected source unit
+let baseAnalysis = null;      // geometry as parsed (coordinates assumed to be in mm)
 let currentFilename = null;
+
+// Source-file unit → millimetres. STL/STEP carry no reliable unit, so we let the user
+// declare it; getting this wrong scales the quote by the cube of the factor.
+const UNIT_TO_MM = { mm: 1, cm: 10, in: 25.4 };
+
+// Typical service-bureau build envelopes (mm), orientation-independent. Parts larger than
+// these still quote, but get flagged for manual review / splitting.
+const PROCESS_ENVELOPES = {
+  fdm: [300, 300, 300],
+  sla: [200, 200, 250],
+  sls: [200, 200, 330],
+  cnc: [500, 400, 300]
+};
+
+// Re-derive the displayed/quoted geometry from the parsed mm-geometry for the chosen unit.
+function applyUnits() {
+  if (!baseAnalysis) return;
+  const f = UNIT_TO_MM[ui.fUnits ? ui.fUnits.value : 'mm'] || 1;
+  currentAnalysis = {
+    volume_mm3:  baseAnalysis.volume_mm3  * f * f * f,
+    surface_mm2: baseAnalysis.surface_mm2 * f * f,
+    bbox_mm: { x: baseAnalysis.bbox_mm.x * f, y: baseAnalysis.bbox_mm.y * f, z: baseAnalysis.bbox_mm.z * f },
+    triCount: baseAnalysis.triCount,
+    watertight: baseAnalysis.watertight
+  };
+  populateReadout(currentAnalysis);
+  updateQuote();
+}
 
 // Populate process/material selects
 function populateProcesses() {
@@ -1103,12 +1318,11 @@ function finishGeometry(geometry, sourceLabel) {
   }
   ui.loadingText.textContent = 'Computing volume…';
   setTimeout(() => {
-    const analysis = analyzeGeometry(geometry);
-    currentAnalysis = analysis;
+    baseAnalysis = analyzeGeometry(geometry);
+    if (ui.fUnits) ui.fUnits.value = 'mm';   // default each file to mm; user opts into cm/in
     addMeshToScene(geometry);
-    populateReadout(analysis);
     showQuoteUI();
-    updateQuote();
+    applyUnits();              // sets currentAnalysis, populates readout, runs the quote
     ui.loadingPane.classList.add('hidden');
     ui.statusChip.textContent = '● QUOTED';
   }, 30);
@@ -1122,7 +1336,7 @@ function addMeshToScene(geometry) {
   }
   geometry.computeVertexNormals();
   const material = new THREE.MeshStandardMaterial({
-    color: 0xe84d1a, metalness: 0.15, roughness: 0.55, flatShading: false
+    color: 0x0135f4, metalness: 0.15, roughness: 0.55, flatShading: false
   });
   const mesh = new THREE.Mesh(geometry, material);
 
@@ -1148,7 +1362,7 @@ function addMeshToScene(geometry) {
   // Resize grid
   scene.remove(grid);
   const gridSize = Math.max(maxDim * 3, 100);
-  const newGrid = new THREE.GridHelper(gridSize, 20, 0x3a3e44, 0x2a2a2a);
+  const newGrid = new THREE.GridHelper(gridSize, 20, 0xCECECB, 0xDDDDDD);
   newGrid.material.opacity = 0.35; newGrid.material.transparent = true;
   newGrid.position.y = -size.y / 2;
   scene.add(newGrid);
@@ -1157,6 +1371,7 @@ function addMeshToScene(geometry) {
   ui.fileChip.textContent = currentFilename;
   ui.resetBtn.style.display = 'block';
   ui.viewerHint.style.display = 'block';
+  requestRender();
 }
 
 function populateReadout(a) {
@@ -1169,9 +1384,12 @@ function populateReadout(a) {
   const material = MATERIALS[ui.fMaterial.value];
   if (material) ui.rWeight.textContent = `${(vol_cm3 * material.density).toFixed(1)} g · ${material.name}`;
 
-  if (!a.watertight) {
+  if (a.watertight === false) {
     ui.meshWarn.style.display = 'block';
-    ui.meshWarn.textContent = 'Mesh is not watertight — volume estimate may be imprecise.';
+    ui.meshWarn.textContent = 'Mesh is not watertight (open or non-manifold edges) — volume estimate may be imprecise.';
+  } else if (a.watertight === null) {
+    ui.meshWarn.style.display = 'block';
+    ui.meshWarn.textContent = 'Mesh too large to verify — volume estimate assumes a closed solid.';
   } else {
     ui.meshWarn.style.display = 'none';
   }
@@ -1250,8 +1468,9 @@ function updateQuote() {
   const materialCost = weight_g * material.pricePerG;
   const est_hours = (a.volume_mm3 / process.mmPerHour) * timeScale;
   const machineCost = est_hours * process.hourlyRate;
-  const setupFee = process.setupFee;
-  const subtotal = (materialCost + machineCost + setupFee) * process.complexity * toleranceMult * finishMult;
+  const setupFee = process.setupFee;                 // one-time per order (CAM / slicing / fixturing)
+  const setupPerUnit = setupFee / qty;               // amortised across the batch, not charged per part
+  const subtotal = (materialCost + machineCost + setupPerUnit) * process.complexity * toleranceMult * finishMult;
   const qtyDisc = quantityDiscount(qty);
   const unitPrice = subtotal * qtyDisc * leadMult;
   const total = unitPrice * qty;
@@ -1268,13 +1487,28 @@ function updateQuote() {
   ui.breakdown.innerHTML = `
     <div class="row"><span>Material (${material.name})</span><span>${fmtPrice(materialCost)}</span></div>
     <div class="row"><span>Machine time (${(est_hours*60).toFixed(0)} min @ ${fmtPrice(process.hourlyRate)}/h)</span><span>${fmtPrice(machineCost)}</span></div>
-    <div class="row"><span>Setup fee</span><span>${fmtPrice(setupFee)}</span></div>
+    <div class="row"><span>Setup fee${qty > 1 ? ` (${fmtPrice(setupFee)} ÷ ${qty})` : ''}</span><span>${fmtPrice(setupPerUnit)}</span></div>
     <div class="row"><span>Complexity factor</span><span>×${process.complexity.toFixed(2)}</span></div>
     ${modifierRows}
     <div class="row"><span>Quantity discount (×${qty})</span><span>${qtyDisc < 1 ? `×${qtyDisc.toFixed(2)}` : '—'}</span></div>
     <div class="row"><span>Lead time</span><span>${leadMult > 1 ? `×${leadMult.toFixed(2)}` : '—'}</span></div>
     <div class="row total-row"><span>Total (${qty} unit${qty>1?'s':''})</span><span>${fmtPrice(total)}</span></div>
   `;
+
+  // Build-volume sanity check (orientation-independent: compare sorted part dims to envelope)
+  const env = PROCESS_ENVELOPES[processKey];
+  if (env && ui.sizeWarn) {
+    const part = [a.bbox_mm.x, a.bbox_mm.y, a.bbox_mm.z].sort((x, y) => y - x);
+    const cap = [...env].sort((x, y) => y - x);
+    if (part.some((d, i) => d > cap[i])) {
+      ui.sizeWarn.style.display = 'block';
+      ui.sizeWarn.textContent =
+        `Part ${a.bbox_mm.x.toFixed(0)}×${a.bbox_mm.y.toFixed(0)}×${a.bbox_mm.z.toFixed(0)} mm exceeds a typical ` +
+        `${process.name} build envelope (${cap[0]}×${cap[1]}×${cap[2]} mm) — may need manual review or splitting.`;
+    } else {
+      ui.sizeWarn.style.display = 'none';
+    }
+  }
 }
 
 function renderProcessParams() {
@@ -1317,6 +1551,7 @@ function renderProcessParams() {
   });
 }
 
+ui.fUnits.addEventListener('change', applyUnits);
 ui.fProcess.addEventListener('change', () => { populateMaterials(); renderProcessParams(); updateQuote(); });
 ui.fMaterial.addEventListener('change', updateQuote);
 ui.fQty.addEventListener('input', updateQuote);
@@ -1350,6 +1585,9 @@ function resetToUpload() {
   ui.configSection.style.display = 'none';
   ui.breakdownSection.style.display = 'none';
   ui.statusChip.textContent = '● READY';
+  baseAnalysis = null;
+  if (ui.sizeWarn) ui.sizeWarn.style.display = 'none';
+  requestRender();
 }
 ui.resetBtn.addEventListener('click', resetToUpload);
 ui.newBtn.addEventListener('click', resetToUpload);
@@ -1361,8 +1599,77 @@ function showToast(msg) {
   clearTimeout(ui.toast._t);
   ui.toast._t = setTimeout(() => ui.toast.classList.remove('show'), 3200);
 }
-ui.requestBtn.addEventListener('click', () => {
+// ---------- Lead-capture modal ----------
+function quoteSummaryText() {
+  const proc = PROCESSES[ui.fProcess.value];
+  const mat = MATERIALS[ui.fMaterial.value];
+  const qty = Math.max(1, Math.min(500, parseInt(ui.fQty.value) || 1));
+  return `${currentFilename || 'part'} · ${proc ? proc.name : ''} · ${mat ? mat.name : ''} · qty ${qty} · ${ui.totalPrice.textContent}`;
+}
+function openLeadModal() {
+  ui.leadSummary.textContent = quoteSummaryText();
+  ui.leadError.classList.remove('show');
+  ui.leadModal.classList.add('show');
+  ui.leadModal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => ui.leadEmail.focus(), 50);
+}
+function closeLeadModal() {
+  ui.leadModal.classList.remove('show');
+  ui.leadModal.setAttribute('aria-hidden', 'true');
+}
+ui.requestBtn.addEventListener('click', openLeadModal);
+ui.leadClose.addEventListener('click', closeLeadModal);
+ui.leadModal.addEventListener('click', (e) => { if (e.target === ui.leadModal) closeLeadModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ui.leadModal.classList.contains('show')) closeLeadModal(); });
+ui.leadSubmit.addEventListener('click', () => {
+  const email = ui.leadEmail.value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    ui.leadError.textContent = 'Please enter a valid email address.';
+    ui.leadError.classList.add('show');
+    ui.leadEmail.focus();
+    return;
+  }
+  // Demo only — no backend. A real build would POST { email, name, notes, quote } here.
+  closeLeadModal();
   showToast('✓ Request sent — matching you with Flex Factory suppliers');
+});
+
+// ---------- Print / PDF quote ----------
+function buildPrintSheet() {
+  const proc = PROCESSES[ui.fProcess.value];
+  const mat = MATERIALS[ui.fMaterial.value];
+  const qty = Math.max(1, Math.min(500, parseInt(ui.fQty.value) || 1));
+  const a = currentAnalysis;
+  const unit = ui.fUnits ? ui.fUnits.value : 'mm';
+  const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const bbox = a ? `${a.bbox_mm.x.toFixed(1)} × ${a.bbox_mm.y.toFixed(1)} × ${a.bbox_mm.z.toFixed(1)} mm` : '—';
+  const vol = a ? `${(a.volume_mm3 / 1000).toFixed(2)} cm³` : '—';
+  ui.printSheet.innerHTML = `
+    <div class="ps-head">
+      <img src="FF_logo_blue.svg" alt="Flex Factory">
+      <div class="ps-meta">Instant Quote<br>${date}</div>
+    </div>
+    <h1>Indicative Quote</h1>
+    <h2>Part</h2>
+    <table class="ps-info">
+      <tr><td>File</td><td>${currentFilename || '—'}</td></tr>
+      <tr><td>Source units</td><td>${unit}</td></tr>
+      <tr><td>Bounding box</td><td>${bbox}</td></tr>
+      <tr><td>Volume</td><td>${vol}</td></tr>
+      <tr><td>Process</td><td>${proc ? proc.name : '—'}</td></tr>
+      <tr><td>Material</td><td>${mat ? mat.name : '—'}</td></tr>
+      <tr><td>Quantity</td><td>${qty}</td></tr>
+    </table>
+    <h2>Cost breakdown (per unit)</h2>
+    <div class="breakdown">${ui.breakdown.innerHTML}</div>
+    <div class="ps-total"><span>Total</span><span>${ui.totalPrice.textContent}</span></div>
+    <p class="ps-disc">Indicative estimate generated in-browser from the uploaded geometry. Final pricing is subject to supplier review of manufacturability, tolerances and finish. © ${new Date().getFullYear()} Flex Factory.</p>
+  `;
+}
+ui.printBtn.addEventListener('click', () => {
+  if (!currentAnalysis) return;
+  buildPrintSheet();
+  window.print();
 });
 
 // ---------- Tab switching ----------
@@ -1414,7 +1721,7 @@ function renderSettings() {
           </div>
         </div>
         <div style="margin-top:20px;">
-          <label style="display:block;font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">Quantity-discount tiers</label>
+          <label style="display:block;font-size:12px;color:var(--muted);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">Quantity-discount tiers</label>
           <div class="settings-grid" id="s-qty-tiers">
             ${g.qtyTiers.map((t, i) => `
               <div class="field" style="display:flex;gap:8px;align-items:end;">

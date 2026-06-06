@@ -28,10 +28,10 @@ function Price({ value, unit, size = 30, color = 'var(--ink)', decimals = false,
 }
 
 /* ---------------- Star rating ---------------- */
-function Stars({ value = 5, reviews, size = 13, gap = 6 }) {
+function Stars({ value = 5, reviews, size = 13, gap = 6, light = false }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap }}>
-      <span style={{ fontSize: size + 0.5, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{value.toFixed(1)}</span>
+      <span style={{ fontSize: size + 0.5, fontWeight: 700, color: light ? '#fff' : 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{value.toFixed(1)}</span>
       <span style={{ display: 'inline-flex', gap: 1, color: '#F5A623' }}>
         {[0, 1, 2, 3, 4].map(i => <Icon key={i} name="star" size={size} fill={i < Math.round(value)} stroke={1.6} style={{ color: i < Math.round(value) ? '#F5A623' : 'var(--line-strong)' }} />)}
       </span>
@@ -203,7 +203,7 @@ function ListingCard({ item, featured, onOpen }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: featured ? 21 : 16.5, letterSpacing: '-0.02em', color: light ? 'var(--ff-lime)' : 'var(--ink)' }}>{item.title}</h3>
       <div style={{ fontSize: 13, color: light ? 'rgba(255,255,255,0.7)' : 'var(--ink-3)', fontWeight: 500 }}>{item.vendor}, {item.city}</div>
-      <Stars value={item.rating} reviews={item.reviews} />
+      <Stars value={item.rating} reviews={item.reviews} light={light} />
     </div>
   );
 

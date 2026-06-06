@@ -453,7 +453,8 @@ function JobDetailPage({ item, go, requireAuth }) {
   const crumb = (jd && jd.crumb) || ['Home', 'Jobs', item.cat, item.title];
   const summary = (jd && jd.summary) || item.blurb;
   const quoteUrl = '../Flex%20Factory%20Instant%20Quote%20_standalone_.html';
-  const embedUrl = quoteUrl + '?embed=1' + (jd && jd.quoteProcess ? '&process=' + jd.quoteProcess : '');
+  const quoteVersion = 'c733ed2';
+  const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (jd && jd.quoteProcess ? '&process=' + jd.quoteProcess : '');
   const badgeTone = item.badge && ({ lime: ['var(--ff-lime)', 'var(--ff-navy)'], blue: ['rgba(1,53,244,0.10)', 'var(--ff-blue)'], red: ['var(--neg-bg)', 'var(--neg)'] }[item.badge.t] || ['var(--ff-fog)', 'var(--ink-2)']);
   const scrollToQuote = () => quoteRef.current && window.scrollTo({ top: quoteRef.current.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
 

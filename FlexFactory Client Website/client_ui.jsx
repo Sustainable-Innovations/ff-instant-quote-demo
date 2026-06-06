@@ -59,7 +59,7 @@ function CornerBadge({ label, tone = 'lime', corner = 'tr' }) {
 
 /* ---------------- Placeholder photo tile ---------------- */
 // Branded placeholder standing in for a real product/space photo.
-function Thumb({ icon = 'box', label, tone = 'blue', h = 200, dark, style, children }) {
+function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', dark, style, children }) {
   const palettes = {
     blue: ['#0C3997', '#0135F4'], navy: ['#070F41', '#152255'], slate: ['#2A3050', '#3A4170'],
     teal: ['#0E5C6B', '#127E92'], green: ['#0E5E3C', '#13794E'],
@@ -75,6 +75,7 @@ function Thumb({ icon = 'box', label, tone = 'blue', h = 200, dark, style, child
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Icon name={icon} size={Math.min(54, h * 0.3)} stroke={1.4} style={{ color: 'rgba(255,255,255,0.62)' }} />
       </div>
+      {image && <img src={image} alt={alt} loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
       {label && <span className="chamfer-sm" style={{ position: 'absolute', bottom: 10, left: 10, height: 22, padding: '0 9px', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(7,15,65,0.55)', backdropFilter: 'blur(4px)', color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 600 }}><Icon name="image" size={12} />{label}</span>}
       {children}
     </div>
@@ -212,7 +213,7 @@ function ListingCard({ item, featured, onOpen }) {
       <article onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
         className="chamfer" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', background: 'var(--ff-blue-deep)', cursor: 'pointer', boxShadow: hover ? 'var(--shadow-lg)' : 'var(--shadow-sm)', transition: 'box-shadow .18s', overflow: 'hidden' }}>
         <div style={{ position: 'relative' }}>
-          <Thumb icon={item.icon} tone={tone} h={230} label={isSpace ? 'Space photo' : 'Product photo'} />
+          <Thumb icon={item.icon} tone={tone} h={230} image={item.image} alt={item.title} label={!item.image ? (isSpace ? 'Space photo' : 'Product photo') : null} />
           <CornerBadge label={item.badge ? item.badge.l : 'FEATURED'} tone={item.badge ? item.badge.t : 'lime'} corner="tl" />
           {item.off > 0 && <CornerBadge label={`${item.off}% OFF`} tone="red" corner="tr" />}
         </div>
@@ -233,7 +234,7 @@ function ListingCard({ item, featured, onOpen }) {
     <article onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       className="chamfer" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', boxShadow: hover ? 'var(--shadow-md)' : 'var(--shadow-sm)', transform: hover ? 'translateY(-2px)' : 'none', transition: 'box-shadow .18s, transform .18s', overflow: 'hidden' }}>
       <div style={{ position: 'relative' }}>
-        <Thumb icon={item.icon} tone={tone} h={172} />
+        <Thumb icon={item.icon} tone={tone} h={172} image={item.image} alt={item.title} />
         {item.badge && <CornerBadge label={item.badge.l} tone={item.badge.t} corner="tl" />}
         {item.off > 0 && <CornerBadge label={`${item.off}% OFF`} tone="red" corner="tr" />}
         {item.sub && <CornerBadge label="SUBSCRIBER ONLY" tone="gray" corner="tr" />}

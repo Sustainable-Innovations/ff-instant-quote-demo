@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FlexFactory · Marketplace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ff-blue: #0135F4;
+  --ff-blue-deep: #0C3997;
+  --ff-navy: #070F41;
+  --ff-lime: #E1FF05;
+  --ff-gray: #CECEC8;
+  --ff-fog: #F6F6F6;
+  --ff-white: #FFFFFF;
+
+  --bg: var(--ff-fog);
+  --surface: #FFFFFF;
+  --surface-2: #FBFBFA;
+  --ink: #0A0E2A;
+  --ink-2: #4A4F6B;
+  --ink-3: #8A8FA6;
+  --line: #E6E6E2;
+  --line-strong: #D2D2CC;
+
+  --accent: var(--ff-blue);
+
+  --pos: #0E7C4A;
+  --pos-bg: #E5F4EC;
+  --neg: #C42B2B;
+  --neg-bg: #FBEAEA;
+  --warn: #9A6A00;
+  --warn-bg: #FBF1D8;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+
+  --row-h: 56px;
+  --pad: 14px;
+  --gap: 24px;
+  --chamfer: 14px;
+  --chamfer-sm: 8px;
+
+  --shadow-sm: 0 1px 2px rgba(7,15,65,0.06), 0 1px 1px rgba(7,15,65,0.04);
+  --shadow-md: 0 6px 24px rgba(7,15,65,0.08), 0 2px 6px rgba(7,15,65,0.05);
+  --shadow-lg: 0 24px 60px rgba(7,15,65,0.18);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+#root { height: 100%; }
+
+.chamfer { clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, var(--chamfer) 100%, 0 calc(100% - var(--chamfer))); }
+.chamfer-sm { clip-path: polygon(0 0, calc(100% - var(--chamfer-sm)) 0, 100% var(--chamfer-sm), 100% 100%, var(--chamfer-sm) 100%, 0 calc(100% - var(--chamfer-sm))); }
+.chamfer-tr { clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%); }
+.chamfer-bl { clip-path: polygon(0 0, 100% 0, 100% 100%, var(--chamfer) 100%, 0 calc(100% - var(--chamfer))); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #D7D7D1; border-radius: 0; border: 3px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #BFBFB8; }
+
+.tnum { font-variant-numeric: tabular-nums; }
+.mono-fig { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+a { color: inherit; }
+
+@keyframes ff-fade-up { from { transform: translateY(10px); } to { transform: none; } }
+@keyframes ff-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ff-scale-in { from { transform: scale(0.97) translateY(6px); } to { transform: none; } }
+.anim-page > * { animation: ff-fade-up 0.34s cubic-bezier(.2,.7,.3,1); }
+
+.focus-lime:focus-visible { outline: 3px solid var(--ff-lime); outline-offset: 1px; }
+
+.mobile-only { display: none; }
+@media (max-width: 1100px) {
+  .home-cards { grid-template-columns: repeat(3, 1fr) !important; }
+  .results-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+@media (max-width: 940px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+  .browse-grid { grid-template-columns: 1fr !important; }
+  .browse-side { display: none !important; }
+  .detail-grid { grid-template-columns: 1fr !important; }
+  .incl-grid { grid-template-columns: 1fr 1fr !important; }
+  .tier-grid { grid-template-columns: 1fr !important; }
+  .pick-grid { grid-template-columns: 1fr !important; }
+  .gate-grid { grid-template-columns: 1fr !important; }
+  .booking-detail-grid { grid-template-columns: 1fr !important; }
+  .booking-addons-grid { grid-template-columns: 1fr !important; }
+  .acct-sidebar { display: none !important; }
+  .home-cards { grid-template-columns: repeat(2, 1fr) !important; }
+  .results-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  :root { --gap: 16px; }
+  .results-grid { grid-template-columns: 1fr !important; }
+  .home-cards { grid-template-columns: 1fr !important; }
+  .incl-grid { grid-template-columns: 1fr !important; }
+  .addon-grid { grid-template-columns: 1fr !important; }
+  .home-cards > article, .results-grid > article { grid-column: span 1 !important; }
+}
+input[type="range"] { height: 6px; accent-color: var(--ff-blue); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<template id="__bundler_thumbnail">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<rect width="100" height="100" fill="#0C3997"/>
+<rect x="30" y="30" width="40" height="6" fill="#E1FF05"/>
+<path d="M30 42 H58 V60 L48 70 H40 V94 H30 Z" fill="#FFFFFF"/>
+<path d="M64 42 H86 V60 L76 70 H66 V94 H64 V60 L70 54 H80 V48 H64 Z" fill="#FFFFFF"/>
+</svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="ui.jsx"></script>
+<script type="text/babel" src="client_ui.jsx"></script>
+<script type="text/babel" src="client_data.jsx"></script>
+<script type="text/babel" src="client_auth.jsx"></script>
+<script type="text/babel" src="client_pages_home.jsx"></script>
+<script type="text/babel" src="client_pages_browse.jsx"></script>
+<script type="text/babel" src="client_pages_detail.jsx"></script>
+<script type="text/babel" src="client_pages_account.jsx"></script>
+<script type="text/babel" src="client_app.jsx"></script>
+</body>
+</html>

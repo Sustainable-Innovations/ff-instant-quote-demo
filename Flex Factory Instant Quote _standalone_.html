@@ -76,32 +76,6 @@
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
   }
-  /* SeekMake lives inside the viewer area; tabs toggle visibility */
-  #seekmake-pane {
-    position: absolute; inset: 0;
-    display: none; background: #fff;
-    z-index: 40;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  #seekmake-pane.active { display: block; }
-  #seekmake-pane iframe { width: 100%; min-height: 100%; border: 0; display: block; }
-  #seekmake-pane .sm-placeholder {
-    width: 100%; height: 100%;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--bg-elev); color: var(--muted);
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px;
-  }
-
-  /* When SeekMake is active, collapse the right panel so the iframe owns the whole area */
-  main.seekmake-active { grid-template-columns: 1fr 0; }
-  main.seekmake-active #side-pane { display: none; }
-  main.seekmake-active #upload-pane,
-  main.seekmake-active #loading-pane,
-  main.seekmake-active .viewer-overlay,
-  main.seekmake-active #reset-btn,
-  main.seekmake-active #viewer-hint,
-  main.seekmake-active #viewer-canvas { visibility: hidden; }
   /* Floating tab switcher so the user can still swap back to FF */
   .tab-floating {
     position: fixed; top: 16px; right: 16px;
@@ -109,7 +83,7 @@
     background: rgba(246,246,246,0.92); backdrop-filter: blur(8px);
     border: 1px solid var(--divider);
   }
-  main.seekmake-active ~ .tab-floating, main.settings-active ~ .tab-floating { display: flex; }
+  main.settings-active ~ .tab-floating { display: flex; }
 
   /* ---------- Settings pane ---------- */
   #settings-pane {
@@ -471,43 +445,6 @@
   .tab-panel { display: none; flex-direction: column; flex: 1; }
   .tab-panel.active { display: flex; }
 
-  /* ---------- SeekMake embed ---------- */
-  .embed-wrap {
-    display: flex; flex-direction: column; height: 100%;
-    padding: 16px; gap: 14px;
-  }
-  .embed-note {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
-    color: var(--muted); line-height: 1.55; letter-spacing: 0.3px;
-    padding: 10px 12px; background: var(--bg);
-    border-left: 2px solid var(--accent);
-  }
-  .embed-note code {
-    color: var(--accent); background: transparent;
-    font-family: inherit; font-size: 11px;
-  }
-  .embed-frame {
-    flex: 1; min-height: 480px;
-    border: 1px solid var(--divider);
-    background: #fff;
-  }
-  .embed-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
-  .embed-placeholder {
-    flex: 1; min-height: 380px;
-    border: 1px dashed var(--divider);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 32px 24px; gap: 12px;
-  }
-  .embed-placeholder .big {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px;
-    color: var(--text); letter-spacing: 0.4px;
-  }
-  .embed-placeholder .small {
-    font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 320px;
-  }
-  .embed-placeholder a { color: var(--accent); text-decoration: none; }
-  .embed-placeholder a:hover { text-decoration: underline; }
-
   /* ---------- Lead-capture modal ---------- */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 600;
@@ -621,10 +558,6 @@
       </div>
     </div>
 
-    <div id="seekmake-pane" data-embed-url="https://seekmake.com/instant-quote/?isEmbed=true&manufacturer=69e777c101f2ac54007c32e1">
-      <div class="sm-placeholder">Loading SeekMake widget…</div>
-    </div>
-
     <div id="settings-pane">
       <div class="settings-header">
         <div>
@@ -644,7 +577,6 @@
     <div class="tabs" role="tablist">
       <button type="button" class="tab-btn active" data-tab="ff"><span class="dot"></span>FF Engine</button>
       <button type="button" class="tab-btn" data-tab="settings"><span class="dot"></span>Settings</button>
-      <button type="button" class="tab-btn" data-tab="seekmake"><span class="dot"></span>SeekMake</button>
     </div>
 
     <div class="tab-panel active" id="tab-ff">
@@ -714,28 +646,15 @@
         <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--accent)">2.</span> We compute volume, surface area, and bounding box entirely in your browser — your file never leaves your device.</p>
         <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--accent)">3.</span> Pick a process and material to see an instant indicative quote.</p>
         <p style="margin-bottom: 12px;"><span class="mono" style="color:var(--accent)">4.</span> Submit to get matched with a Flex Factory supplier.</p>
-        <p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider); color: var(--muted); font-size: 12px;">Switch to the <b style="color:var(--text)">SeekMake</b> tab to compare FF's quote against a live third-party quoting service for the same file.</p>
       </div>
     </div>
     </div><!-- /#tab-ff -->
-
-    <div class="tab-panel" id="tab-seekmake">
-      <div class="panel-section" style="padding: 40px 24px;">
-        <h2>Third-party comparison</h2>
-        <div style="font-size: 13px; line-height: 1.7; color: var(--muted);">
-          <p style="margin-bottom: 12px;">SeekMake's live instant-quote widget is shown in the main area on the left.</p>
-          <p style="margin-bottom: 12px;">Upload the same part there to see how FF's custom quote compares against one of the few genuinely free third-party quoting services.</p>
-          <p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider); font-size: 12px;">Click <b style="color:var(--text)">FF Engine</b> above to return to the FF upload + quote flow.</p>
-        </div>
-      </div>
-    </div><!-- /#tab-seekmake -->
   </aside>
 </main>
 
 <div class="tab-floating" id="floating-tabs">
   <button type="button" class="tab-btn-float" data-tab="ff"><span class="dot"></span>FF Engine</button>
   <button type="button" class="tab-btn-float" data-tab="settings"><span class="dot"></span>Settings</button>
-  <button type="button" class="tab-btn-float" data-tab="seekmake"><span class="dot"></span>SeekMake</button>
 </div>
 
 <!-- Lead-capture modal -->
@@ -949,7 +868,7 @@ function resize() {
 // ---------- Render-on-demand ----------
 // Render only when something changes (camera move, damping inertia, resize, new mesh)
 // instead of a constant 60fps loop — saves GPU/battery when idle or when the viewer
-// is hidden behind the Settings/SeekMake tabs.
+// is hidden behind the Settings tab.
 let renderRequested = false;
 function requestRender() {
   if (renderRequested) return;
@@ -1685,14 +1604,10 @@ function setActiveTab(target) {
   document.querySelectorAll('.tab-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'tab-' + target);
   });
-  const smPane = document.getElementById('seekmake-pane');
   const stPane = document.getElementById('settings-pane');
-  if (smPane) smPane.classList.toggle('active', target === 'seekmake');
   if (stPane) stPane.classList.toggle('active', target === 'settings');
   const main = document.querySelector('main');
-  main.classList.toggle('seekmake-active', target === 'seekmake');
   main.classList.toggle('settings-active', target === 'settings');
-  if (target === 'seekmake') mountSeekMake();
   if (target === 'settings') renderSettings();
   setTimeout(resize, 300);
 }
@@ -1920,33 +1835,6 @@ document.addEventListener('click', (e) => {
     showToast('Settings reset to defaults');
   }
 });
-
-function mountSeekMake() {
-  const host = document.getElementById('seekmake-pane');
-  if (!host || host.dataset.mounted === '1') return;
-  const url = host.dataset.embedUrl;
-  if (!url) return;
-  host.innerHTML = '';
-  const iframe = document.createElement('iframe');
-  iframe.id = 'seekmake-embed-iq';
-  iframe.className = 'seekmake-embed-iq';
-  iframe.src = url;
-  iframe.title = 'SeekMake instant quote';
-  iframe.setAttribute('sandbox', 'allow-downloads allow-scripts allow-same-origin allow-forms allow-popups');
-  iframe.setAttribute('scrolling', 'auto');
-  iframe.style.cssText = 'width:100%;min-height:100%;height:auto;border:0;display:block;';
-  host.appendChild(iframe);
-
-  if (!document.querySelector('script[data-seekmake-iq]')) {
-    const script = document.createElement('script');
-    script.src = 'https://seekmake.com/assets/public/iq-api-latest.js';
-    script.dataset.seekmakeIq = '1';
-    script.async = true;
-    document.body.appendChild(script);
-  }
-
-  host.dataset.mounted = '1';
-}
 
 // Recompute viewer size after layout settles
 setTimeout(resize, 100);

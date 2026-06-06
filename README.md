@@ -12,10 +12,9 @@ https://<your-username>.github.io/<repo-name>/
 
 ## What's inside
 
-- **`Flex Factory Instant Quote _standalone_.html`** — the main demo. Three tabs:
+- **`Flex Factory Instant Quote _standalone_.html`** — the main demo. Two tabs:
   - **FF Engine** — custom FF-branded quoting: three.js viewer + client-side STL/STEP analysis (volume, surface area, bounding box) + heuristic pricing in SAR. All coefficients configurable in the Settings tab.
   - **Settings** — edit currency, quantity-discount tiers, lead-time multipliers, per-process rates (FDM / SLA / SLS / CNC) and process-specific parameters (infill, layer height, tolerance, finish), plus a full materials editor. Persists to localStorage.
-  - **SeekMake** — embedded third-party instant-quote widget for side-by-side comparison.
 - **`Flex Factory Landing _standalone_.html`** — an earlier landing-page exploration (kept for visual identity reference).
 - **`index.html`** — redirect to the main demo so the Pages root URL works.
 

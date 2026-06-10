@@ -75,7 +75,7 @@ function MapPlaceholder() {
 /* ---------- access pass card ---------- */
 function AccessPass({ bk }) {
   return (
-    <div className="chamfer" style={{ background: 'var(--ff-navy)', color: '#fff', padding: '28px 32px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 28, alignItems: 'start', position: 'relative', overflow: 'hidden' }}>
+    <div className="chamfer access-pass-grid" style={{ background: 'var(--ff-navy)', color: '#fff', padding: '28px 32px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 28, alignItems: 'start', position: 'relative', overflow: 'hidden' }}>
       {/* watermark */}
       <div style={{ position: 'absolute', right: -10, bottom: -20, opacity: 0.05, pointerEvents: 'none', transform: 'scale(5.5)', transformOrigin: 'bottom right' }}>
         <FFMark size={50} accent />
@@ -86,7 +86,7 @@ function AccessPass({ bk }) {
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--ff-lime)', display: 'inline-block', flexShrink: 0 }} />
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>ACCESS PASS</span>
         </div>
-        <h2 style={{ margin: '0 0 22px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 46, letterSpacing: '-0.03em', lineHeight: 1 }}>{bk.space}</h2>
+        <h2 className="access-pass-title" style={{ margin: '0 0 22px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 46, letterSpacing: '-0.03em', lineHeight: 1 }}>{bk.space}</h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 36px' }}>
           {[['DATE', bk.dateLabel.split('–')[1]?.trim() || bk.dateLabel],
             ['TIME', bk.timeRange],
@@ -239,9 +239,75 @@ function BookingsList({ onSelect }) {
   );
 }
 
+/* ---------- rewards tier badge ---------- */
+function TierBadge({ tier, size = 'sm' }) {
+  if (!tier) return null;
+  const lg = size === 'lg';
+  return (
+    <span className="chamfer-sm" style={{ height: lg ? 34 : 28, padding: lg ? '0 15px' : '0 12px', display: 'inline-flex', alignItems: 'center', gap: 6, background: tier.color, color: tier.fg, fontSize: lg ? 13.5 : 12.5, fontWeight: 700, flexShrink: 0 }}>
+      <Icon name="star" size={lg ? 14 : 12} fill />{tier.name}
+    </span>
+  );
+}
+
+/* ---------- rewards card ---------- */
+function RewardsCard({ count = MOCK_BOOKINGS.length }) {
+  const r = window.getRewardStatus(count);
+  return (
+    <div className="chamfer" style={{ background: 'var(--ff-navy)', color: '#fff', padding: '24px 28px', position: 'relative', overflow: 'hidden' }}>
+      {/* watermark */}
+      <div style={{ position: 'absolute', right: -10, bottom: -20, opacity: 0.05, pointerEvents: 'none', transform: 'scale(5.5)', transformOrigin: 'bottom right' }}>
+        <FFMark size={50} accent />
+      </div>
+      {/* header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, position: 'relative' }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--ff-lime)', marginBottom: 6 }}>REWARDS</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, letterSpacing: '-0.03em', lineHeight: 1 }}>
+            {r.current ? `${r.current.name} member` : 'Start earning'}
+          </div>
+        </div>
+        <TierBadge tier={r.current} size="lg" />
+      </div>
+      {/* stats */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 36px', margin: '18px 0 20px', position: 'relative' }}>
+        {[['TOTAL BOOKINGS', String(r.count)],
+          ['CURRENT PERK', r.current && r.current.discount > 0 ? `${r.current.discount}% off bookings` : 'Member status'],
+          ...(r.next ? [['NEXT TIER', `${r.next.name} · ${r.next.discount}% off`]] : []),
+        ].map(([label, val]) => (
+          <div key={label}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.45)', marginBottom: 4 }}>{label}</div>
+            <div className={label === 'TOTAL BOOKINGS' ? 'mono-fig' : undefined} style={{ fontSize: label === 'TOTAL BOOKINGS' ? 22 : 15, fontWeight: 700, color: 'var(--ff-lime)' }}>{val}</div>
+          </div>
+        ))}
+      </div>
+      {/* progress */}
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, fontSize: 12.5, marginBottom: 8, flexWrap: 'wrap' }}>
+          {r.next ? (
+            <React.Fragment>
+              <span><strong>{r.remaining} more booking{r.remaining === 1 ? '' : 's'}</strong> to {r.next.name}</span>
+              <span style={{ color: 'var(--ff-lime)', fontWeight: 700 }}>unlocks {r.next.discount}% off</span>
+            </React.Fragment>
+          ) : (
+            <span style={{ fontWeight: 700 }}>Top tier reached — {r.current.discount}% off every booking</span>
+          )}
+        </div>
+        <div style={{ height: 8, background: 'rgba(255,255,255,0.15)' }}>
+          <div style={{ height: '100%', width: `${r.progress}%`, background: 'var(--ff-lime)', transition: 'width .6s cubic-bezier(.2,.7,.3,1)' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.45)' }}>
+          {REWARD_TIERS.map(t => <span key={t.id}>{t.name.toUpperCase()} · {t.min}</span>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- profile page ---------- */
 function ProfilePage({ onSignOut }) {
   const c = window.CLIENT;
+  const tier = window.getRewardStatus(MOCK_BOOKINGS.length).current;
   return (
     <div>
       <h2 style={{ margin: '0 0 22px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>Profile</h2>
@@ -253,13 +319,39 @@ function ProfilePage({ onSignOut }) {
             <div style={{ fontSize: 13.5, color: 'var(--ink-3)', marginTop: 4 }}>{c.email}</div>
             <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>{c.city}</div>
           </div>
-          {c.subscriber && <span className="chamfer-sm" style={{ marginLeft: 'auto', height: 28, padding: '0 12px', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ff-lime)', color: 'var(--ff-navy)', fontSize: 12.5, fontWeight: 700 }}><Icon name="star" size={12} fill />Subscriber</span>}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <TierBadge tier={tier} />
+            {c.subscriber && <span className="chamfer-sm" style={{ height: 28, padding: '0 12px', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ff-lime)', color: 'var(--ff-navy)', fontSize: 12.5, fontWeight: 700 }}><Icon name="star" size={12} fill />Subscriber</span>}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <Button kind="secondary" icon="edit">Edit profile</Button>
           <div style={{ flex: 1 }} />
           <Button kind="ghost" icon="logout" onClick={onSignOut}>Sign out</Button>
         </div>
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <RewardsCard />
+      </div>
+    </div>
+  );
+}
+
+/* ---------- mobile account tab bar ---------- */
+function MobileAcctTabs({ active, setActive }) {
+  return (
+    <div className="mobile-acct-tabs" style={{ display: 'none', overflowX: 'auto', background: 'var(--surface)', borderBottom: '1px solid var(--line)', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', flexShrink: 0 }}>
+      <div style={{ display: 'flex', minWidth: 'max-content', padding: '0 4px' }}>
+        {ACCT_NAV.map(item => {
+          const on = active === item.id;
+          return (
+            <button key={item.id} onClick={() => setActive(item.id)}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 16px 8px', border: 'none', borderBottom: on ? '2px solid var(--ff-blue)' : '2px solid transparent', background: 'transparent', color: on ? 'var(--ff-blue)' : 'var(--ink-3)', fontWeight: on ? 700 : 500, fontSize: 10.5, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '0.03em', transition: 'color .15s' }}>
+              <Icon name={item.icon} size={20} />
+              {item.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -277,57 +369,64 @@ const ACCT_NAV = [
 
 function AccountSidebar({ active, setActive }) {
   return (
-    <aside className="acct-sidebar" style={{ width: 232, flexShrink: 0, background: 'var(--surface)', borderRight: '1px solid var(--line)', minHeight: 'calc(100vh - 72px)', display: 'flex', flexDirection: 'column', position: 'sticky', top: 72, alignSelf: 'flex-start', overflow: 'hidden' }}>
+    <aside className="acct-sidebar" style={{ width: 220, flexShrink: 0, background: '#0C3997', borderRight: 'none', height: 'calc(100vh - 72px - 32px)', display: 'flex', flexDirection: 'column', position: 'sticky', top: 88, margin: '16px 0 16px 16px', alignSelf: 'flex-start', overflow: 'hidden', clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 36px), calc(100% - 36px) 100%, 0 100%)' }}>
       {/* watermark */}
-      <div style={{ position: 'absolute', bottom: 40, left: -40, opacity: 0.04, pointerEvents: 'none', transform: 'scale(5)', transformOrigin: 'bottom left' }}>
-        <FFMark size={70} />
+      <div style={{ position: 'absolute', bottom: 40, left: -40, opacity: 0.07, pointerEvents: 'none', transform: 'scale(5)', transformOrigin: 'bottom left' }}>
+        <FFMark size={70} accent />
       </div>
       <nav style={{ padding: '18px 0', flex: 1, position: 'relative' }}>
         {ACCT_NAV.map(item => {
           const on = active === item.id;
           return (
             <button key={item.id} onClick={() => setActive(item.id)}
-              style={{ width: '100%', border: 'none', borderLeft: on ? '3px solid var(--ff-lime)' : '3px solid transparent', background: on ? 'rgba(1,53,244,0.05)' : 'transparent', display: 'flex', alignItems: 'center', gap: 13, padding: '13px 20px', fontSize: 14.5, fontWeight: on ? 700 : 500, color: on ? 'var(--ff-blue)' : 'var(--ink-2)', textAlign: 'left', cursor: 'pointer', transition: 'all .15s' }}>
+              style={{ width: '100%', border: 'none', borderLeft: on ? '3px solid var(--ff-lime)' : '3px solid transparent', background: on ? 'rgba(255,255,255,0.13)' : 'transparent', display: 'flex', alignItems: 'center', gap: 13, padding: '13px 20px', fontSize: 14.5, fontWeight: on ? 700 : 500, color: on ? '#fff' : 'rgba(255,255,255,0.6)', textAlign: 'left', cursor: 'pointer', transition: 'all .15s' }}>
               <Icon name={item.icon} size={18} />
               {item.label}
             </button>
           );
         })}
       </nav>
-      <div style={{ borderTop: '1px solid var(--line)', padding: '14px 0', position: 'relative' }}>
-        <button style={{ width: '100%', border: 'none', background: 'transparent', borderLeft: '3px solid transparent', display: 'flex', alignItems: 'center', gap: 13, padding: '13px 20px', fontSize: 14.5, fontWeight: 500, color: 'var(--ink-2)', cursor: 'pointer' }}>
-          <Icon name="users" size={18} />
-          Account
-        </button>
-      </div>
     </aside>
   );
 }
 
 /* ---------- account shell (exported) ---------- */
-function AccountShell({ go, onSignOut, initialSub, initialBooking }) {
+function AccountShell({ go, onSignOut, initialSub, initialBooking, initialOrder, initialQuote }) {
   const [sub, setSub] = useAcct(initialSub || 'bookings');
   const [booking, setBooking] = useAcct(initialBooking || null);
+  const [order, setOrder] = useAcct(initialOrder || null);
+  const [quote, setQuote] = useAcct(initialQuote || null);
 
-  const setActive = (id) => { setSub(id); setBooking(null); };
+  const setActive = (id) => { setSub(id); setBooking(null); setOrder(null); setQuote(null); };
 
   let content;
   if (sub === 'bookings' && booking) {
     content = <BookingDetail bk={booking} onBack={() => setBooking(null)} />;
   } else if (sub === 'bookings') {
     content = <BookingsList onSelect={bk => setBooking(bk)} />;
+  } else if (sub === 'orders' && order) {
+    content = <OrderDetail order={order} onBack={() => setOrder(null)} />;
+  } else if (sub === 'orders') {
+    content = <OrdersList onSelect={ord => setOrder(ord)} />;
+  } else if (sub === 'quotes' && quote) {
+    content = <QuoteDetail quote={quote} onBack={() => setQuote(null)} />;
+  } else if (sub === 'quotes') {
+    content = <QuotesList onSelect={q => setQuote(q)} />;
   } else {
     content = <ProfilePage onSignOut={onSignOut} />;
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', minHeight: 'calc(100vh - 72px)' }}>
-      <AccountSidebar active={sub} setActive={setActive} />
-      <div key={sub + (booking ? booking.id : '')} style={{ flex: 1, minWidth: 0, padding: '32px 38px 72px', animation: 'ff-fade .2s ease' }}>
-        {content}
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 72px)' }}>
+      <MobileAcctTabs active={sub} setActive={setActive} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', flex: 1 }}>
+        <AccountSidebar active={sub} setActive={setActive} />
+        <div key={sub + (booking ? booking.id : '') + (order ? order.id : '') + (quote ? quote.id : '')} className="acct-content" style={{ flex: 1, minWidth: 0, padding: '32px 38px 72px', animation: 'ff-fade .2s ease' }}>
+          {content}
+        </div>
       </div>
     </div>
   );
 }
 
-Object.assign(window, { AccountShell, MOCK_BOOKINGS });
+Object.assign(window, { AccountShell, MOCK_BOOKINGS, TierBadge, RewardsCard });

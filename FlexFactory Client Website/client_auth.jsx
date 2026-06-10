@@ -87,7 +87,24 @@ function ClRegister({ onLogin, go, note }) {
   };
   return (
     <CAuthShell wide heading="Create your account" sub="Two quick steps to start booking" note={note}>
-      <div style={{ marginBottom: 26 }}><Stepper steps={['Account', 'Your details']} current={step} /></div>
+      <div style={{ marginBottom: 26 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          {['Account', 'Your details'].map((label, i) => {
+            const done = i < step, active = i === step;
+            return (
+              <React.Fragment key={label}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', border: active ? '2px solid var(--ff-blue)' : done ? 'none' : '2px solid var(--line)', background: done ? 'var(--ff-blue)' : 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {done ? <Icon name="check" size={13} stroke={3} style={{ color: '#fff' }} /> : <span style={{ fontSize: 12, fontWeight: 700, color: active ? 'var(--ff-blue)' : 'var(--ink-3)' }}>{i + 1}</span>}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: active ? 700 : 400, color: active ? 'var(--ff-blue)' : 'var(--ink-3)', whiteSpace: 'nowrap' }}>{label}</span>
+                </div>
+                {i < 1 && <div style={{ flex: 1, height: 2, background: i < step ? 'var(--ff-blue)' : 'var(--line)', minWidth: 40, margin: '0 6px 18px', transition: 'background .3s' }} />}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
       {step === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <Field label="Email address"><TextInput type="email" value={acc.email} onChange={e => setAcc(a => ({ ...a, email: e.target.value }))} placeholder="you@email.sa" style={eStyle('email')} />{eMsg('email')}</Field>

@@ -59,7 +59,7 @@ function CornerBadge({ label, tone = 'lime', corner = 'tr' }) {
 
 /* ---------------- Placeholder photo tile ---------------- */
 // Branded placeholder standing in for a real product/space photo.
-function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', dark, style, children }) {
+function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', loading = 'lazy', dark, style, children }) {
   const palettes = {
     blue: ['#0C3997', '#0135F4'], navy: ['#070F41', '#152255'], slate: ['#2A3050', '#3A4170'],
     teal: ['#0E5C6B', '#127E92'], green: ['#0E5E3C', '#13794E'],
@@ -67,16 +67,16 @@ function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', d
   const [a, b] = palettes[tone] || palettes.blue;
   return (
     <div style={{ position: 'relative', height: h, background: `linear-gradient(135deg, ${a}, ${b})`, overflow: 'hidden', ...style }}>
-      <svg width="100%" height="100%" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5 }} aria-hidden="true">
+      <svg width="100%" height="100%" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5, zIndex: 0 }} aria-hidden="true">
         <path d="M0 200 L120 90 L240 200 Z" fill="rgba(255,255,255,0.05)" />
         <path d="M180 240 L320 70 L460 240 Z" fill="rgba(255,255,255,0.05)" />
         <path d="M300 0 L400 0 L400 110 Z" fill="rgba(1,53,244,0.25)" />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 0 }}>
         <Icon name={icon} size={Math.min(54, h * 0.3)} stroke={1.4} style={{ color: 'rgba(255,255,255,0.62)' }} />
       </div>
-      {image && <img src={image} alt={alt} loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-      {label && <span className="chamfer-sm" style={{ position: 'absolute', bottom: 10, left: 10, height: 22, padding: '0 9px', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(7,15,65,0.55)', backdropFilter: 'blur(4px)', color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 600 }}><Icon name="image" size={12} />{label}</span>}
+      {image && <img src={image} alt={alt} loading={loading} decoding="async" onError={e => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+      {label && <span className="chamfer-sm" style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 2, height: 22, padding: '0 9px', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(7,15,65,0.55)', backdropFilter: 'blur(4px)', color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 600 }}><Icon name="image" size={12} />{label}</span>}
       {children}
     </div>
   );
@@ -85,32 +85,67 @@ function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', d
 /* ---------------- Public header ---------------- */
 const NAV_LINKS = [{ id: 'jobs', label: 'Jobs' }, { id: 'spaces', label: 'Spaces' }, { id: 'subscription', label: 'Subscription' }];
 function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery }) {
+  const [menuOpen, setMenuOpen] = usePCU(false);
+  useEffPCU(() => { setMenuOpen(false); }, [route]);
+  const close = () => setMenuOpen(false);
   return (
-    <header style={{ height: 72, background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 22, padding: '0 28px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 50 }}>
-      <button onClick={() => go({ name: 'home' })} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex', alignItems: 'center' }}><Wordmark /></button>
-      <nav className="desktop-only" style={{ display: 'flex', gap: 30, marginLeft: 14 }}>
-        {NAV_LINKS.map(l => (
-          <button key={l.id}
-            onClick={() => l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.id === 'jobs' ? 'job' : 'space' })}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--ff-blue)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--ink)'}
-            style={{ border: 'none', background: 'transparent', fontSize: 15, fontWeight: 600, color: 'var(--ink)', padding: '4px 0', transition: 'color .15s', cursor: 'pointer' }}>{l.label}</button>
-        ))}
-      </nav>
-      <div className="desktop-only" style={{ flex: 1, display: 'flex', maxWidth: 640, margin: '0 auto' }}>
-        <div className="chamfer-sm" style={{ display: 'flex', alignItems: 'center', gap: 10, height: 44, padding: '0 16px', background: 'var(--surface)', border: '1px solid var(--line-strong)', width: '100%' }}>
-          <Icon name="search" size={18} style={{ color: 'var(--ink-3)' }} />
-          <input value={query || ''} onChange={e => setQuery && setQuery(e.target.value)} placeholder="Search jobs, spaces, vendors…"
-            onKeyDown={e => { if (e.key === 'Enter') go({ name: 'browse', kind: 'job' }); }}
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, width: '100%', color: 'var(--ink)' }} />
+    <React.Fragment>
+      <header className="header-pad" style={{ height: 72, background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 22, padding: '0 28px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 50 }}>
+        <button onClick={() => { go({ name: 'home' }); close(); }} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex', alignItems: 'center' }}><Wordmark /></button>
+        <nav className="desktop-only" style={{ display: 'flex', gap: 30, marginLeft: 14 }}>
+          {NAV_LINKS.map(l => (
+            <button key={l.id}
+              onClick={() => l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.id === 'jobs' ? 'job' : 'space' })}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--ff-blue)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--ink)'}
+              style={{ border: 'none', background: 'transparent', fontSize: 15, fontWeight: 600, color: 'var(--ink)', padding: '4px 0', transition: 'color .15s', cursor: 'pointer' }}>{l.label}</button>
+          ))}
+        </nav>
+        <div className="desktop-only" style={{ flex: 1, display: 'flex', maxWidth: 640, margin: '0 auto' }}>
+          <div className="chamfer-sm" style={{ display: 'flex', alignItems: 'center', gap: 10, height: 44, padding: '0 16px', background: 'var(--surface)', border: '1px solid var(--line-strong)', width: '100%' }}>
+            <Icon name="search" size={18} style={{ color: 'var(--ink-3)' }} />
+            <input value={query || ''} onChange={e => setQuery && setQuery(e.target.value)} placeholder="Search jobs, spaces, vendors…"
+              onKeyDown={e => { if (e.key === 'Enter') go({ name: 'browse', kind: 'job' }); }}
+              style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, width: '100%', color: 'var(--ink)' }} />
+          </div>
         </div>
-      </div>
-      <button className="mobile-only" onClick={onMenu} style={{ border: 'none', background: 'transparent', display: 'none', padding: 4, color: 'var(--ink)', marginLeft: 'auto' }}><Icon name="menu" size={24} /></button>
-      <button className="desktop-only focus-lime" title="Language" style={{ width: 40, height: 40, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ff-blue)' }}><Icon name="external" size={20} stroke={2} /></button>
-      {authed
-        ? <button className="desktop-only" onClick={() => go({ name: 'account' })} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex' }}><Avatar name={window.CLIENT.fullName} size={38} /></button>
-        : <Button kind="lime" size="md" className="desktop-only" onClick={onSignIn} style={{ fontWeight: 700, letterSpacing: '0.03em' }}>SIGN IN</Button>}
-    </header>
+        <button className="mobile-only" onClick={() => setMenuOpen(o => !o)} style={{ border: 'none', background: 'transparent', display: 'none', padding: 4, color: 'var(--ink)', marginLeft: 'auto', zIndex: 51 }}>
+          <Icon name={menuOpen ? 'x' : 'menu'} size={26} />
+        </button>
+        <button className="desktop-only focus-lime" title="Language" style={{ width: 40, height: 40, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ff-blue)' }}><Icon name="external" size={20} stroke={2} /></button>
+        {authed
+          ? <button className="desktop-only" onClick={() => go({ name: 'account' })} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex' }}><Avatar name={window.CLIENT.fullName} size={38} /></button>
+          : <Button kind="lime" size="md" className="desktop-only" onClick={onSignIn} style={{ fontWeight: 700, letterSpacing: '0.03em' }}>SIGN IN</Button>}
+      </header>
+      {menuOpen && (
+        <div style={{ position: 'fixed', top: 72, left: 0, right: 0, bottom: 0, background: 'var(--surface)', zIndex: 49, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--line)' }}>
+            <div className="chamfer-sm" style={{ display: 'flex', alignItems: 'center', gap: 10, height: 48, padding: '0 16px', border: '1px solid var(--line-strong)', background: 'var(--bg)' }}>
+              <Icon name="search" size={18} style={{ color: 'var(--ink-3)' }} />
+              <input defaultValue={query || ''}
+                onChange={e => setQuery && setQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { go({ name: 'browse', kind: 'job' }); close(); } }}
+                placeholder="Search jobs, spaces, vendors…"
+                style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 15, width: '100%', color: 'var(--ink)' }} autoFocus />
+            </div>
+          </div>
+          <nav style={{ flex: 1 }}>
+            {NAV_LINKS.map(l => (
+              <button key={l.id} onClick={() => { l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.id === 'jobs' ? 'job' : 'space' }); close(); }}
+                style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--line)', background: 'transparent', display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', fontSize: 16, fontWeight: 600, color: 'var(--ink)', textAlign: 'left', cursor: 'pointer' }}>
+                {l.label}
+                <Icon name="chevR" size={16} style={{ marginLeft: 'auto', color: 'var(--ink-3)' }} />
+              </button>
+            ))}
+          </nav>
+          <div style={{ padding: '20px 16px', borderTop: '1px solid var(--line)' }}>
+            {authed
+              ? <Button kind="primary" full icon="users" onClick={() => { go({ name: 'account' }); close(); }}>My Account</Button>
+              : <Button kind="lime" full onClick={() => { onSignIn(); close(); }} style={{ fontWeight: 700 }}>SIGN IN</Button>}
+          </div>
+        </div>
+      )}
+    </React.Fragment>
   );
 }
 
@@ -122,8 +157,8 @@ function PublicFooter({ go }) {
     { h: 'For vendors', items: ['How it Works', 'Join as Provider'] },
   ];
   return (
-    <footer style={{ background: '#05060F', color: '#fff', padding: '52px 28px 30px' }}>
-      <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: 40, flexWrap: 'wrap' }}>
+    <footer className="footer-pad" style={{ background: '#05060F', color: '#fff', padding: '52px 28px 30px' }}>
+      <div className="footer-inner" style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: 40, flexWrap: 'wrap' }}>
         <div style={{ maxWidth: 320 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <FFMarkLime size={30} />
@@ -132,7 +167,7 @@ function PublicFooter({ go }) {
           <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.92)' }}>The on-demand shop floor for KSA.</div>
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>248 machines, 126 spaces, one subscription.</div>
         </div>
-        <div style={{ display: 'flex', gap: 64, flexWrap: 'wrap' }}>
+        <div className="footer-cols" style={{ display: 'flex', gap: 64, flexWrap: 'wrap' }}>
           {cols.map(c => (
             <div key={c.h}>
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ff-lime)', marginBottom: 16 }}>{c.h}</div>
@@ -160,9 +195,9 @@ function FFMarkLime({ size = 30 }) {
 function SubBanner({ go }) {
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 28px' }}>
-      <div className="chamfer" style={{ position: 'relative', background: 'linear-gradient(120deg, #070F41 0%, #0C1A5C 60%, #0C3997 100%)', padding: '46px 56px', overflow: 'hidden', '--chamfer': '22px' }}>
+      <div className="chamfer sub-banner-pad" style={{ position: 'relative', background: 'linear-gradient(120deg, #070F41 0%, #0C1A5C 60%, #0C3997 100%)', padding: '46px 56px', overflow: 'hidden', '--chamfer': '22px' }}>
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 40, background: 'var(--ff-lime)', clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 30, flexWrap: 'wrap' }}>
+        <div className="sub-banner-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 30, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ff-lime)', marginBottom: 14 }}>Subscription required for quotes &amp; bookings</div>
             <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 52px)', letterSpacing: '-0.03em', color: '#fff', lineHeight: 1 }}>One pass, every shop.</h2>
@@ -191,7 +226,9 @@ const TONE_FOR = { 'PCB Fab': 'green', '3D Printing': 'blue', 'CNC': 'slate', 'L
 function ListingCard({ item, featured, onOpen }) {
   const [hover, setHover] = usePCU(false);
   const isSpace = item.kind === 'space';
-  const cta = isSpace ? 'BOOK NOW' : 'GET QUOTE';
+  const isFixed = item.fixed;
+  const isInstant = item.instant;
+  const cta = isSpace ? 'BOOK NOW' : isFixed ? 'ORDER NOW' : isInstant ? 'GET INSTANT QUOTE' : 'GET QUOTE';
   const tone = TONE_FOR[item.cat] || 'blue';
 
   const tagsRow = (light) => (
@@ -222,6 +259,7 @@ function ListingCard({ item, featured, onOpen }) {
           {meta(true)}
           <div style={{ flex: 1 }} />
           {isSpace && <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#fff' }}><span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.6)' }}>FROM</span><Price value={item.from} unit="/hour" size={24} color="var(--ff-lime)" decimals /></div>}
+          {isFixed && <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#fff' }}><span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.6)' }}>FROM</span><Price value={item.from} unit="/part" size={24} color="var(--ff-lime)" decimals={false} /></div>}
           <button onClick={e => { e.stopPropagation(); onOpen(); }} className="chamfer-sm focus-lime" style={{ height: 48, border: 'none', background: '#fff', color: 'var(--ff-navy)', fontWeight: 700, fontSize: 14, letterSpacing: '0.04em', transition: 'background .15s' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--ff-lime)'} onMouseLeave={e => e.currentTarget.style.background = '#fff'}>{cta}</button>
         </div>
@@ -246,6 +284,10 @@ function ListingCard({ item, featured, onOpen }) {
         {isSpace && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
           <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-3)' }}>FROM</span>
           <Price value={item.from} unit="/hour" size={19} color="var(--ff-blue)" decimals gap={5} />
+        </div>}
+        {isFixed && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-3)' }}>FROM</span>
+          <Price value={item.from} unit="/part" size={19} color="var(--ff-blue)" decimals={false} gap={5} />
         </div>}
       </div>
       <div style={{ padding: '0 16px 16px' }}>

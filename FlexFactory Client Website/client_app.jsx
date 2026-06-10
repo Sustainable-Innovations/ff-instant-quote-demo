@@ -60,7 +60,8 @@ function ClientApp() {
   if (route.name === 'home') body = <HomePage go={go} />;
   else if (route.name === 'browse') body = <BrowsePage key={'browse-' + (route.kind || 'job')} route={route} go={go} query={query} />;
   else if (route.name === 'detail') body = <DetailPage route={route} go={go} authed={authed} requireAuth={requireAuth} />;
-  else if (route.name === 'account') body = authed ? <AccountShell go={go} onSignOut={() => { setAuthed(false); go({ name: 'home' }); }} initialSub={route.sub} initialBooking={route.booking} /> : <HomePage go={go} />;
+  else if (route.name === 'job') body = <JobDetailPage route={route} go={go} authed={authed} requireAuth={requireAuth} />;
+  else if (route.name === 'account') body = authed ? <AccountShell go={go} onSignOut={() => { setAuthed(false); go({ name: 'home' }); }} initialSub={route.sub} initialBooking={route.booking} initialOrder={route.order} initialQuote={route.quote} /> : <HomePage go={go} />;
 
   return (
     <ToastHost>

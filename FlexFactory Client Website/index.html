@@ -89,6 +89,10 @@ a { color: inherit; }
   .home-cards { grid-template-columns: repeat(3, 1fr) !important; }
   .results-grid { grid-template-columns: repeat(3, 1fr) !important; }
 }
+.mobile-acct-tabs { display: none; }
+.mobile-search-bar { display: none; }
+.mobile-nav-drawer { display: none; }
+
 @media (max-width: 940px) {
   .desktop-only { display: none !important; }
   .mobile-only { display: flex !important; }
@@ -102,8 +106,17 @@ a { color: inherit; }
   .booking-detail-grid { grid-template-columns: 1fr !important; }
   .booking-addons-grid { grid-template-columns: 1fr !important; }
   .acct-sidebar { display: none !important; }
+  .mobile-acct-tabs { display: flex !important; }
+  .acct-content { padding: 20px 16px 80px !important; }
+  .access-pass-grid { grid-template-columns: 1fr !important; }
   .home-cards { grid-template-columns: repeat(2, 1fr) !important; }
   .results-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .footer-inner { flex-direction: column !important; gap: 32px !important; }
+  .sub-banner-content { flex-direction: column !important; gap: 22px !important; }
+  .sub-banner-pad { padding: 36px 28px !important; }
+  .explore-section-head { flex-wrap: wrap !important; gap: 10px !important; }
+  .stats-band-grid { grid-template-columns: repeat(2, 1fr) !important; row-gap: 26px !important; }
+  .stats-band-grid > div:nth-child(odd) { border-left: none !important; }
 }
 @media (max-width: 640px) {
   :root { --gap: 16px; }
@@ -112,6 +125,14 @@ a { color: inherit; }
   .incl-grid { grid-template-columns: 1fr !important; }
   .addon-grid { grid-template-columns: 1fr !important; }
   .home-cards > article, .results-grid > article { grid-column: span 1 !important; }
+  .mobile-search-bar { display: flex !important; }
+  .access-pass-title { font-size: 30px !important; }
+  .hero-content-pad { padding: 44px 16px !important; }
+  .section-outer-pad { padding-left: 16px !important; padding-right: 16px !important; }
+  .footer-cols { gap: 28px !important; }
+  .footer-pad { padding: 36px 16px 24px !important; }
+  .header-pad { padding: 0 16px !important; }
+  .stats-band-grid > div { padding: 6px 10px !important; }
 }
 input[type="range"] { height: 6px; accent-color: var(--ff-blue); }
 </style>
@@ -132,15 +153,17 @@ input[type="range"] { height: 6px; accent-color: var(--ff-blue); }
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-<script type="text/babel" src="tweaks-panel.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="ui.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_ui.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_data.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_auth.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_pages_home.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_pages_browse.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_pages_detail.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_pages_account.jsx?v=job-covers-only-1"></script>
-<script type="text/babel" src="client_app.jsx?v=job-covers-only-1"></script>
+<script type="text/babel" src="tweaks-panel.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="ui.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_ui.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_data.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_auth.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_pages_home.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_pages_browse.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_pages_detail.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_pages_job_detail.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_pages_orders.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_pages_account.jsx?v=rewards-stats-20260610"></script>
+<script type="text/babel" src="client_app.jsx?v=rewards-stats-20260610"></script>
 </body>
 </html>

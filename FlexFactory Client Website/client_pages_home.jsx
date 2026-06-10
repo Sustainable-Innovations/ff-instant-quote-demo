@@ -21,10 +21,10 @@ function Hero({ go }) {
       </svg>
       {/* right image */}
       <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '46%', clipPath: 'polygon(22% 0, 100% 0, 100% 100%, 0 100%)' }} className="desktop-only">
-        <Thumb icon={s.tag === 'NEW VENDORS' ? 'tools' : s.tag === 'MEMBER PERK' ? 'wallet' : 'grid'} tone="navy" h={420} label="Hero photo" style={{ height: '100%' }} />
+        <Thumb icon={s.tag === 'NEW VENDORS' ? 'tools' : s.tag === 'MEMBER PERK' ? 'wallet' : 'grid'} tone="navy" h={420} image={s.image} alt={s.title} loading="eager" style={{ height: '100%' }} />
       </div>
       {/* content */}
-      <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto', padding: '64px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 420 }}>
+      <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto', padding: '64px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 420 }} className="hero-content-pad">
         <div key={i} className="anim-page" style={{ maxWidth: 620 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
             <span className="chamfer-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 30, padding: '0 13px', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
@@ -43,6 +43,46 @@ function Hero({ go }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ---------- Count-up number ---------- */
+function CountUp({ value, decimals = 0, suffix = '', duration = 1300 }) {
+  const [n, setN] = usePHome(0);
+  useEffHome(() => {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setN(value); return; }
+    let raf; const t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setN(value * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  const txt = decimals ? n.toFixed(decimals) : Math.round(n).toLocaleString('en-US');
+  return <span className="mono-fig">{txt}{suffix}</span>;
+}
+
+/* ---------- Marketing stats band ---------- */
+function StatsBand() {
+  return (
+    <section style={{ background: 'var(--ff-navy)', padding: '34px 0' }}>
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 28px' }}>
+        <div style={{ textAlign: 'center', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.45)', marginBottom: 22 }}>EXPLORE THE KINGDOM'S MAKER NETWORK</div>
+        <div className="stats-band-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
+          {window.MARKET_STATS.map((s, i) => (
+            <div key={s.id} style={{ padding: '6px 28px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.12)' : 'none', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(30px, 3.6vw, 42px)', letterSpacing: '-0.03em', color: 'var(--ff-lime)', lineHeight: 1.05 }}>
+                <CountUp value={s.value} decimals={s.decimals || 0} suffix={s.suffix || ''} />
+              </div>
+              <div style={{ marginTop: 6, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -70,13 +110,13 @@ function ExploreSection({ title, chips, items, go, dark }) {
   return (
     <section style={{ background: dark ? 'var(--ff-fog)' : 'var(--surface)', padding: '52px 0' }}>
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div className="explore-section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.025em', whiteSpace: 'nowrap' }}>{title}</h2>
           <button onClick={() => go({ name: 'browse', kind: items[0].kind })} style={{ border: 'none', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--ff-blue)', textDecoration: 'underline', textUnderlineOffset: 3, flexShrink: 0 }}>SEE ALL <Icon name="chevR" size={15} stroke={2.4} /></button>
         </div>
         <div style={{ marginBottom: 22 }}><SectionChips options={chips} value={chip} onChange={setChip} /></div>
         <div className="home-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20, alignItems: 'stretch' }}>
-          {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: 'detail', id: it.id, kind: it.kind })} />)}
+          {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: it.kind === 'job' ? 'job' : 'detail', id: it.id, kind: it.kind })} />)}
         </div>
       </div>
     </section>
@@ -87,6 +127,7 @@ function HomePage({ go }) {
   return (
     <div>
       <Hero go={go} />
+      <StatsBand />
       <ExploreSection title="Explore Jobs" chips={window.JOB_CHIPS} items={window.JOBS.slice(0, 4)} go={go} />
       <ExploreSection title="Explore Spaces" chips={window.SPACE_CHIPS} items={window.SPACES.slice(0, 4)} go={go} dark />
       <section id="sub" style={{ padding: '20px 0 64px', background: 'var(--surface)' }}><SubBanner go={go} /></section>
@@ -94,4 +135,4 @@ function HomePage({ go }) {
   );
 }
 
-Object.assign(window, { HomePage, Hero, SectionChips, ExploreSection });
+Object.assign(window, { HomePage, Hero, SectionChips, ExploreSection, StatsBand, CountUp });

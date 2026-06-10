@@ -108,7 +108,7 @@ function MiniPromo() {
         <path d="M560 0 L760 0 L640 132 L520 60 Z" fill="rgba(255,255,255,0.05)" />
       </svg>
       <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '34%', clipPath: 'polygon(28% 0, 100% 0, 100% 100%, 0 100%)' }} className="desktop-only">
-        <Thumb icon="grid" tone="navy" h={132} style={{ height: '100%' }} />
+        <Thumb icon="grid" tone="navy" h={132} image={window.PROMO_IMAGE} alt="PCB manufacturing promotion" style={{ height: '100%' }} />
       </div>
       <div style={{ position: 'relative', padding: '24px 30px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -143,7 +143,7 @@ function BrowsePage({ route, go, query }) {
           {items.length === 0
             ? <div className="chamfer" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}><Empty icon="search" title="No matches" sub="Try a different search or clear filters." /></div>
             : <div className="results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 22, alignItems: 'stretch' }}>
-                {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: 'detail', id: it.id, kind: it.kind })} />)}
+                {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: it.kind === 'job' ? 'job' : 'detail', id: it.id, kind: it.kind })} />)}
               </div>}
           <div style={{ padding: '52px 0 8px' }}><SubBanner go={go} /></div>
         </div>

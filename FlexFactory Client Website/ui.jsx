@@ -154,10 +154,15 @@ function Status({ value }) {
 
 function Tag({ children, tone = 'blue' }) {
   const tones = {
-    blue: { bg: 'rgba(1,53,244,0.08)', fg: 'var(--ff-blue)' },
-    navy: { bg: 'rgba(7,15,65,0.07)', fg: 'var(--ff-navy)' },
-    gray: { bg: '#EEEEEA', fg: 'var(--ink-2)' },
-  }[tone];
+    blue:   { bg: 'rgba(1,53,244,0.08)',  fg: 'var(--ff-blue)'  },
+    navy:   { bg: 'rgba(7,15,65,0.07)',   fg: 'var(--ff-navy)'  },
+    pos:    { bg: 'var(--pos-bg)',         fg: 'var(--pos)'      },
+    warn:   { bg: 'var(--warn-bg)',        fg: 'var(--warn)'     },
+    neg:    { bg: 'var(--neg-bg)',         fg: 'var(--neg)'      },
+    purple: { bg: 'rgba(91,107,214,0.12)', fg: '#4A5BC4'         },
+    gray:   { bg: '#EEEEEA',               fg: 'var(--ink-2)'    },
+    default:{ bg: '#EEEEEA',               fg: 'var(--ink-2)'    },
+  }[tone] || { bg: '#EEEEEA', fg: 'var(--ink-2)' };
   return <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 8px', background: tones.bg, color: tones.fg, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }} className="chamfer-sm">{children}</span>;
 }
 

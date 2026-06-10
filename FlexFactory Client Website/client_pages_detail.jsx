@@ -19,17 +19,18 @@ function Step({ n, title, pill, pillTone, last, children }) {
 /* ---------- gallery ---------- */
 function Gallery({ d }) {
   const [i, setI] = usePDet(0);
+  const images = d.galleryImages || [];
   return (
     <div className="chamfer" style={{ overflow: 'hidden', border: '1px solid var(--line)' }}>
       <div style={{ position: 'relative' }}>
-        <Thumb icon="grid" tone="navy" h={368} label={null} />
+        <Thumb icon="grid" tone="navy" h={368} image={images[i]} alt={d.gallery[i] || d.title} loading="eager" />
         <span className="chamfer-sm" style={{ position: 'absolute', top: 14, left: 14, height: 26, padding: '0 11px', display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(7,15,65,0.6)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ff-lime)' }} />Space · Electronics</span>
         <span className="chamfer-sm" style={{ position: 'absolute', bottom: 14, right: 14, height: 24, padding: '0 10px', display: 'inline-flex', alignItems: 'center', background: 'rgba(7,15,65,0.6)', color: '#fff', fontSize: 12, fontWeight: 700 }}>{i + 1} / {d.gallery.length}</span>
       </div>
       <div style={{ display: 'flex', gap: 8, padding: 10, background: 'var(--surface)' }}>
         {d.gallery.map((g, k) => (
           <button key={g} onClick={() => setI(k)} className="chamfer-sm" style={{ width: 56, height: 40, flexShrink: 0, border: '2px solid ' + (k === i ? 'var(--ff-blue)' : 'transparent'), padding: 0, overflow: 'hidden' }}>
-            <Thumb icon="grid" tone={k % 2 ? 'slate' : 'navy'} h={36} style={{ height: 36 }} />
+            <Thumb icon="grid" tone={k % 2 ? 'slate' : 'navy'} h={36} image={images[k]} alt={g} style={{ height: 36 }} />
           </button>
         ))}
       </div>

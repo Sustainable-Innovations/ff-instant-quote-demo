@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flex Factory — Instant Quote</title>
 <meta name="description" content="Upload an STL or STEP file and get an instant, indicative manufacturing quote — FDM, SLA, SLS 3D printing and CNC machining. Geometry is analysed entirely in your browser.">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Flex Factory — Instant Quote">
 <meta property="og:description" content="Upload a 3D model and get an instant, indicative manufacturing quote in seconds.">
@@ -524,7 +524,7 @@
 
 <nav class="topbar">
   <div class="brand">
-    <img src="FF_logo_blue.svg" alt="Flex Factory" class="brand-logo">
+    <img src="../../brand/FF_logo_blue.svg" alt="Flex Factory" class="brand-logo">
     <div class="sub">Instant Quote</div>
   </div>
   <div class="actions">
@@ -822,7 +822,12 @@ function quantityDiscount(qty) {
 }
 
 const _numFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-function fmtPrice(n) { return `${state.general.currency} ${_numFmt.format(n)}`; }
+// New Saudi Riyal symbol drawn as inline SVG (matches the marketplace glyph; renders in any font)
+const RY_PATHS = '<path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/>';
+const ry = (em) => `<svg viewBox="0 0 1124.14 1256.39" style="height:${em}em;width:auto;display:inline-block;vertical-align:-0.08em;margin-right:.14em" fill="currentColor" aria-hidden="true">${RY_PATHS}</svg>`;
+function fmtPrice(n) { return ry(0.82) + _numFmt.format(n); }                       // HTML — assign via innerHTML
+function fmtPriceText(n) { return `${state.general.currency} ${_numFmt.format(n)}`; } // plain text — for email/aria
+let lastTotal = 0;
 
 // ---------- Three.js setup ----------
 const canvas = document.getElementById('viewer-canvas');
@@ -1401,8 +1406,9 @@ function updateQuote() {
 
   ui.rWeight.textContent = `${weight_g.toFixed(1)} g · ${material.name}`;
 
-  ui.totalPrice.textContent = fmtPrice(total);
-  ui.unitPrice.textContent = `${fmtPrice(unitPrice)} / unit × ${qty} · ${lead === 'express' ? 'Express' : 'Standard'} lead`;
+  lastTotal = total;
+  ui.totalPrice.innerHTML = fmtPrice(total);
+  ui.unitPrice.innerHTML = `${fmtPrice(unitPrice)} / unit × ${qty} · ${lead === 'express' ? 'Express' : 'Standard'} lead`;
 
   const modifierRows = modifiers.map(m =>
     `<div class="row"><span>${m.label}</span><span>${m.value}</span></div>`
@@ -1528,7 +1534,7 @@ function quoteSummaryText() {
   const proc = PROCESSES[ui.fProcess.value];
   const mat = MATERIALS[ui.fMaterial.value];
   const qty = Math.max(1, Math.min(500, parseInt(ui.fQty.value) || 1));
-  return `${currentFilename || 'part'} · ${proc ? proc.name : ''} · ${mat ? mat.name : ''} · qty ${qty} · ${ui.totalPrice.textContent}`;
+  return `${currentFilename || 'part'} · ${proc ? proc.name : ''} · ${mat ? mat.name : ''} · qty ${qty} · ${fmtPriceText(lastTotal)}`;
 }
 function openLeadModal() {
   ui.leadSummary.textContent = quoteSummaryText();
@@ -1570,7 +1576,7 @@ function buildPrintSheet() {
   const vol = a ? `${(a.volume_mm3 / 1000).toFixed(2)} cm³` : '—';
   ui.printSheet.innerHTML = `
     <div class="ps-head">
-      <img src="FF_logo_blue.svg" alt="Flex Factory">
+      <img src="../../brand/FF_logo_blue.svg" alt="Flex Factory">
       <div class="ps-meta">Instant Quote<br>${date}</div>
     </div>
     <h1>Indicative Quote</h1>
@@ -1586,7 +1592,7 @@ function buildPrintSheet() {
     </table>
     <h2>Cost breakdown (per unit)</h2>
     <div class="breakdown">${ui.breakdown.innerHTML}</div>
-    <div class="ps-total"><span>Total</span><span>${ui.totalPrice.textContent}</span></div>
+    <div class="ps-total"><span>Total</span><span>${fmtPrice(lastTotal)}</span></div>
     <p class="ps-disc">Indicative estimate generated in-browser from the uploaded geometry. Final pricing is subject to supplier review of manufacturability, tolerances and finish. © ${new Date().getFullYear()} Flex Factory.</p>
   `;
 }

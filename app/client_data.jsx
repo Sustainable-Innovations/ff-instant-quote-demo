@@ -38,9 +38,9 @@ const CARD_IMG = (n) => `assets/cards/optimized/card-${String(n).padStart(2, '0'
 /* ---------------- Listings — Jobs (services / products to quote) ---------------- */
 // badge tones: lime (FEATURED/NEW), blue (TOP), red (% OFF)
 const JOBS = [
-  { id: 'J-1', kind: 'job', title: '6-Layer PCB · HASL Finish', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Multilayer'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(1), badge: { l: 'FEATURED', t: 'lime' }, off: 25, featured: true, blurb: 'Turnkey multilayer fabrication with controlled-impedance stack-ups and 24-hour express options.' },
+  { id: 'J-1', kind: 'job', title: '6-Layer PCB · HASL Finish', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Multilayer'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(1), badge: { l: 'FEATURED', t: 'lime' }, off: 25, featured: true, blurb: 'Turnkey multilayer fabrication with controlled-impedance stack-ups and 24-hour express options.', instant: true },
   { id: 'J-2', kind: 'job', title: 'FDM Print · PLA / PETG / ABS', vendor: 'Vertex Fabrication', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['3D Print', 'FDM'], cat: '3D Printing', icon: 'box', image: CARD_IMG(2), badge: { l: 'TOP #1', t: 'blue' }, off: 0, featured: true, blurb: 'Industrial FDM farm — up to 300×300×400 mm, fast turnaround on functional prototypes.', instant: true },
-  { id: 'J-3', kind: 'job', title: 'Prototype PCB · Quick-turn', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Multilayer'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(3), badge: { l: 'FEATURED', t: 'lime' }, off: 7, featured: true, blurb: 'Bare boards in 48 hours. ENIG or HASL, soldermask in six colors.' },
+  { id: 'J-3', kind: 'job', title: 'Prototype PCB · Quick-turn', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Multilayer'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(3), badge: { l: 'FEATURED', t: 'lime' }, off: 7, featured: true, blurb: 'Bare boards in 48 hours. ENIG or HASL, soldermask in six colors.', instant: true },
   { id: 'J-4', kind: 'job', title: 'Bandsaw Cutting · Metal & Wood', vendor: 'Forge & Form', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['Cutting', 'Sheet'], cat: 'Laser', icon: 'tools', image: CARD_IMG(4), badge: { l: 'NEW', t: 'lime' }, off: 18, blurb: 'Precision stock cutting to length with deburring included.', fixed: true, from: 28 },
   { id: 'J-5', kind: 'job', title: 'Resin (SLA) High-Detail Prints', vendor: 'Vertex Fabrication', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['3D Print', 'SLA'], cat: '3D Printing', icon: 'box', image: CARD_IMG(5), off: 0, blurb: '8K resin detail for miniatures, jewelry masters and dental.', fixed: true, from: 60 },
   { id: 'J-6', kind: 'job', title: 'Flex PCB · Polyimide', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Flex'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(6), off: 7, blurb: 'Single and double-sided flex circuits with stiffeners.' },
@@ -243,6 +243,47 @@ const JOB_DETAIL_FIXED = {
   finishes: ['Standard (layer lines visible)', 'Sanded smooth +SAR 25/part', 'Primed +SAR 35/part', 'Painted +SAR 80/part'],
 };
 
+/* ---------------- Rich job detail — PCB instant quote (Prototype PCB) ---------------- */
+const JOB_DETAIL_PCB = {
+  id: 'J-3', fixed: false,
+  title: 'Prototype PCB · Quick-turn',
+  crumb: ['Home', 'Jobs', 'PCB Fab', 'Prototype PCB'],
+  vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, orders: 137,
+  available: 'Quoting instantly',
+  badges: [{ l: 'Instant Quote', t: 'blue' }, { l: 'FEATURED', t: 'lime' }],
+  gallery: ['Bare board', 'Stack-up', 'Soldermask', 'Finish', 'Test', 'Panel'],
+  galleryImages: [CARD_IMG(3), CARD_IMG(1), CARD_IMG(6), CARD_IMG(10), CARD_IMG(11), CARD_IMG(7)],
+  blurb: 'Quick-turn bare-board fabrication — 1 to 6 layers on FR4, HASL LF / ENIG / OSP finishes, soldermask in six colours. Upload your Gerber or ODB++ package and get an instant, indicative price; Circuit Guild confirms a firm quote before anything is charged.',
+  specs: [
+    ['Layers', '1 – 6 layers'], ['Base material', 'FR4 · Tg 150 standard'],
+    ['Board thickness', '0.6 – 2.0 mm'], ['Min track / gap', '0.1 mm / 0.1 mm'],
+    ['Surface finish', 'HASL LF · ENIG · OSP'], ['Soldermask', 'Green · Red · Blue · Black · White · Yellow'],
+    ['Electrical test', 'Flying probe · included'], ['Lead time', '48h express · 5–7 days standard'],
+  ],
+  tiers: [
+    { qty: 5,   label: '5 pcs',   price: 180, unit: '/ set', note: 'Prototype batch' },
+    { qty: 10,  label: '10 pcs',  price: 300, unit: '/ set', note: 'Save 17%', save: 'SAVE 17%' },
+    { qty: 25,  label: '25 pcs',  price: 560, unit: '/ set', note: 'Save 30%', save: 'SAVE 30%', popular: true },
+    { qty: 50,  label: '50 pcs',  price: 980, unit: '/ set', note: 'Save 39%', save: 'SAVE 39%' },
+  ],
+  fileTypes: ['Gerber (.zip)', 'ODB++', 'IPC-2581', 'KiCad (.kicad_pcb)', 'Eagle (.brd)'],
+  finishes: ['HASL lead-free', 'ENIG +SAR 60/order', 'OSP', 'Immersion silver +SAR 90/order'],
+};
+
+/* PCB instant-quote body for the 6-Layer listing (reuses the rich J-1 content + tier shape) */
+const JOB_DETAIL_PCB6 = Object.assign({}, JOB_DETAIL, {
+  available: 'Quoting instantly',
+  tiers: [
+    { qty: 5,   label: '5 pcs',   price: 185,  unit: '/ set', note: 'Prototype run' },
+    { qty: 25,  label: '25 pcs',  price: 420,  unit: '/ set', note: 'Save 12%', save: 'SAVE 12%' },
+    { qty: 100, label: '100 pcs', price: 1100, unit: '/ set', note: 'Pre-production', save: 'SAVE 28%', popular: true },
+    { qty: 250, label: '250 pcs', price: 2300, unit: '/ set', note: 'Save 40%', save: 'SAVE 40%' },
+  ],
+});
+
+/* Map PCB-engine listings to the page body that frames the embedded engine */
+const JOB_DETAIL_PCB_BY_ID = { 'J-1': JOB_DETAIL_PCB6, 'J-3': JOB_DETAIL_PCB };
+
 /* ---------------- Mock quotes ---------------- */
 const MOCK_QUOTES = [
   {
@@ -287,12 +328,36 @@ const MOCK_QUOTES = [
 // Jobs in the "3D Printing" category render the live instant-quote engine embedded
 // in the page; the spec/vendor content below frames it.
 const JOB_DETAILS = {
+  'J-1': {
+    id: 'J-1',
+    crumb: ['Home', 'Jobs', 'PCB Fab', '6-Layer PCB'],
+    location: 'Second Industrial City, Dammam',
+    available: 'Quoting instantly',
+    quote: true,                 // embed the instant-quote engine
+    quoteEngine: 'pcb',          // PCB/PCBA engine
+    quoteProcess: 'pcb',
+    summary: 'Turnkey multilayer PCB fabrication with controlled-impedance stack-ups and 24-hour express options. Upload your Gerber package for an instant, indicative price — layers, board area, finish and quantity update live. Circuit Guild confirms a firm quote before anything is charged.',
+    specs: [
+      { k: 'Layers',         v: 'up to 6 · signal / power / ground', icon: 'layers' },
+      { k: 'Base material',  v: 'FR4 · High-Tg · Rogers on request', icon: 'grid' },
+      { k: 'Surface finish', v: 'HASL LF · ENIG · OSP · ENEPIG', icon: 'filter' },
+      { k: 'Min track/gap',  v: '0.1 mm / 0.1 mm', icon: 'gear' },
+      { k: 'Lead time',      v: '24h express · 5 days standard', icon: 'truck' },
+      { k: 'Max board',      v: '500 × 600 mm', icon: 'box' },
+    ],
+    steps: [
+      { ic: 'upload', t: 'Upload your design', s: 'Gerber, ODB++ or IPC-2581 — parsed in your browser' },
+      { ic: 'gear',   t: 'Pick layers, finish & quantity', s: 'Live indicative price as you change options' },
+      { ic: 'send',   t: 'Request supplier match', s: 'Circuit Guild confirms a firm quote' },
+    ],
+  },
   'J-2': {
     id: 'J-2',
     crumb: ['Home', 'Jobs', '3D Printing', 'FDM / FFF'],
     location: 'Industrial City 2, Riyadh',
     available: 'Quoting instantly',
     quote: true,                 // embed the instant-quote engine
+    quoteEngine: '3d',           // which engine to embed: '3d' (live) | 'pcb' (placeholder)
     quoteProcess: 'fdm',
     summary: 'Industrial FDM farm running 18 machines. Upload an STL or STEP file for an instant, indicative price — material, machine time and lead time update live. Vertex confirms a firm quote before anything is charged.',
     specs: [
@@ -307,6 +372,29 @@ const JOB_DETAILS = {
       { ic: 'upload', t: 'Upload your model', s: 'STL or STEP — analysed in your browser, never uploaded' },
       { ic: 'gear',   t: 'Pick process & material', s: 'Live indicative price as you change options' },
       { ic: 'send',   t: 'Request supplier match', s: 'Vertex Fabrication confirms a firm quote' },
+    ],
+  },
+  'J-3': {
+    id: 'J-3',
+    crumb: ['Home', 'Jobs', 'PCB Fab', 'Prototype PCB'],
+    location: 'Second Industrial City, Dammam',
+    available: 'Quoting instantly',
+    quote: true,                 // embed the instant-quote engine
+    quoteEngine: 'pcb',          // PCB/PCBA engine (placeholder for now)
+    quoteProcess: 'pcb',
+    summary: 'Quick-turn bare-board fabrication. Upload your Gerber or ODB++ package for an instant, indicative price — layer count, board area, finish and quantity update live. Circuit Guild confirms a firm quote before anything is charged.',
+    specs: [
+      { k: 'Layers',         v: '1 – 6 layers', icon: 'layers' },
+      { k: 'Base material',  v: 'FR4 · Tg 150 standard', icon: 'grid' },
+      { k: 'Surface finish', v: 'HASL LF · ENIG · OSP', icon: 'filter' },
+      { k: 'Min track/gap',  v: '0.1 mm / 0.1 mm', icon: 'gear' },
+      { k: 'Lead time',      v: '48h express · 5–7 standard', icon: 'truck' },
+      { k: 'Board size',     v: 'up to 400 × 500 mm', icon: 'box' },
+    ],
+    steps: [
+      { ic: 'upload', t: 'Upload your design', s: 'Gerber, ODB++ or IPC-2581 — parsed in your browser' },
+      { ic: 'gear',   t: 'Pick layers, finish & quantity', s: 'Live indicative price as you change options' },
+      { ic: 'send',   t: 'Request supplier match', s: 'Circuit Guild confirms a firm quote' },
     ],
   },
 };
@@ -343,6 +431,6 @@ const MARKET_STATS = [
 
 Object.assign(window, {
   HERO_SLIDES, PROMO_IMAGE, JOB_CHIPS, SPACE_CHIPS, FILTER_TREE, LOCATIONS, RATING_OPTS, DEAL_OPTS,
-  VENDORS, JOBS, SPACES, SPACE_DETAIL, JOB_DETAIL, JOB_DETAIL_FIXED, JOB_DETAILS, MOCK_ORDERS, MOCK_QUOTES, CLIENT,
+  VENDORS, JOBS, SPACES, SPACE_DETAIL, JOB_DETAIL, JOB_DETAIL_FIXED, JOB_DETAIL_PCB, JOB_DETAIL_PCB6, JOB_DETAIL_PCB_BY_ID, JOB_DETAILS, MOCK_ORDERS, MOCK_QUOTES, CLIENT,
   REWARD_TIERS, getRewardStatus, MARKET_STATS,
 });

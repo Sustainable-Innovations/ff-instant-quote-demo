@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flex Factory — PCB Instant Quote</title>
+<meta name="description" content="Upload a Gerber + drill ZIP and get an instant, indicative PCB manufacturing quote — the board is rendered and priced entirely in your browser.">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #F6F6F6;          /* primary (60%) — off-white background */
+    --bg-elev: #FFFFFF;     /* elevated panels / cards */
+    --bg-elev-2: #FFFFFF;
+    --divider: #CECECB;     /* brand light grey borders */
+    --line-strong: #A9ADBA; /* stronger border for controls on light viewer bg */
+    --text: #070F41;        /* brand navy — foreground (30%) */
+    --muted: #5B6172;       /* derived navy-grey for secondary text */
+    --accent: #0135F4;      /* brand blue — structural fills + standard actions */
+    --accent-hover: #0C3997;/* darker brand blue for hover/pressed */
+    --accent-dim: #D8DEFE;  /* light blue tint for subtle borders/fills */
+    --lime: #E1FF05;        /* brand lime — high-attention conversion accent */
+    --lime-hover: #CBE600;
+    --danger: #D62828;
+    --ok: #16A34A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    overflow: hidden;
+  }
+  .mono { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+
+  /* Embedded mode (?embed) — hide chrome so it nests inside the marketplace job page */
+  body.embedded nav.topbar { display: none; }
+  body.embedded .tabs { display: none; }       /* admin settings hidden in customer embed */
+  body.embedded .tab-floating { display: none !important; }
+  /* embed: flow as a normal document so the (auto-sized) parent iframe never clips the price/content */
+  body.embedded { height: auto; overflow: visible; }
+  body.embedded main { position: static; display: block; }
+  body.embedded #viewer-pane { height: 420px; }
+  body.embedded #side-pane { max-height: none; overflow: visible; border-left: none; border-top: 1px solid var(--divider); }
+  body.embedded #pcb-params { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); column-gap: 18px; }
+  body.embedded #board-readout { max-width: 560px; }
+
+  /* ---------- Top nav ---------- */
+  nav.topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(246,246,246,0.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--divider); z-index: 100;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .brand-logo { height: 26px; width: auto; display: block; }
+  .brand .sub { color: var(--muted); font-size: 13px; margin-left: 10px; border-left: 1px solid var(--divider); padding-left: 10px; }
+  nav.topbar .actions { display: flex; gap: 8px; }
+  .chip {
+    font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--divider);
+    padding: 6px 12px; border-radius: 100px;
+  }
+  .chip.live { background: var(--lime); color: var(--text); border-color: var(--lime); font-weight: 700; }
+
+  /* ---------- Main layout ---------- */
+  main {
+    position: fixed; top: 64px; left: 0; right: 0; bottom: 0;
+    display: grid; grid-template-columns: 1fr 420px;
+    transition: grid-template-columns 0.25s ease;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } }
+
+  .tab-floating {
+    position: fixed; top: 16px; right: 16px; display: none; z-index: 200;
+    background: rgba(246,246,246,0.92); backdrop-filter: blur(8px); border: 1px solid var(--divider);
+  }
+  main.settings-active ~ .tab-floating { display: flex; }
+  .tab-floating button {
+    background: transparent; color: var(--muted); border: none; padding: 10px 16px; cursor: pointer;
+    font-family: inherit; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .tab-floating button + button { border-left: 1px solid var(--divider); }
+  .tab-floating button.active { color: var(--accent); }
+
+  /* ---------- Settings pane ---------- */
+  #settings-pane { position: absolute; inset: 0; display: none; background: var(--bg); z-index: 40; overflow-y: auto; padding: 32px 48px 80px; }
+  #settings-pane.active { display: block; }
+  main.settings-active { grid-template-columns: 1fr 0; }
+  main.settings-active #side-pane { display: none; }
+  main.settings-active #upload-pane, main.settings-active #viewer-stage, main.settings-active .viewer-overlay, main.settings-active #reset-btn, main.settings-active #viewer-hint { visibility: hidden; }
+  .settings-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; max-width: 1100px; }
+  .settings-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.6px; }
+  .settings-header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; letter-spacing: 0.3px; }
+  .settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .settings-section { max-width: 1100px; background: var(--bg-elev); border: 1px solid var(--divider); margin-bottom: 20px; }
+  .settings-section > h3 { font-size: 11px; font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); padding: 14px 20px; border-bottom: 1px solid var(--divider); }
+  .settings-body-pad { padding: 20px; }
+  .mats-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mats-table th, .mats-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--divider); }
+  .mats-table tr:last-child td { border-bottom: none; }
+  .mats-table th { color: var(--muted); font-weight: 400; text-transform: uppercase; letter-spacing: 0.8px; font-size: 10px; }
+  .mats-table input { width: 100%; max-width: 120px; background: var(--bg); color: var(--text); border: 1px solid var(--divider); padding: 6px 8px; font-family: inherit; font-size: 12px; outline: none; text-align: right; }
+  .mats-table input:focus { border-color: var(--accent); }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--divider); padding: 9px 14px; font-family: inherit; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-solid { background: var(--accent); color: #fff; border: none; padding: 9px 14px; font-family: inherit; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; }
+  .btn-solid:hover { background: var(--accent-hover); }
+
+  /* ---------- Upload state ---------- */
+  #upload-pane { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 40px; background: var(--bg); z-index: 50; transition: opacity 0.3s ease; }
+  #upload-pane.hidden { opacity: 0; pointer-events: none; }
+  .drop { width: 100%; max-width: 640px; border: 1.5px dashed var(--divider); background: var(--bg-elev); padding: 56px 48px; text-align: center; transition: border-color 0.15s ease, background 0.15s ease; cursor: pointer; }
+  .drop:hover, .drop.drag { border-color: var(--accent); background: #EEF1FE; }
+  .drop .icon { width: 56px; height: 56px; margin: 0 auto 20px; border-radius: 50%; border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 28px; font-weight: 700; }
+  .drop h1 { font-size: 30px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.8px; line-height: 1.1; }
+  .drop p { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
+  .drop .cta { display: inline-block; background: var(--accent); color: #fff; padding: 12px 24px; font-weight: 700; font-size: 13px; letter-spacing: 0.6px; text-transform: uppercase; border: none; cursor: pointer; font-family: inherit; }
+  .drop .cta:hover { background: var(--accent-hover); }
+  .drop .hint { margin-top: 20px; font-size: 11px; color: var(--muted); letter-spacing: 0.4px; }
+  .drop .error { margin-top: 18px; color: var(--danger); font-size: 13px; display: none; }
+  .drop .error.show { display: block; }
+
+  /* ---------- Viewer ---------- */
+  #viewer-pane { position: relative; background: #ECECEE; overflow: hidden; }
+  #viewer-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 44px; }
+  #board-canvas { max-width: 100%; max-height: 100%; display: none; box-shadow: 0 6px 30px rgba(7,15,65,0.22); }
+  .viewer-overlay { position: absolute; top: 16px; left: 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; z-index: 5; }
+  .seg-sides { display: flex; border: 1px solid var(--line-strong); background: #fff; box-shadow: var(--shadow-sm, 0 1px 2px rgba(7,15,65,0.10)); }
+  .seg-sides button { background: transparent; color: var(--text); border: none; padding: 7px 14px; font-family: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; cursor: pointer; }
+  .seg-sides button + button { border-left: 1px solid var(--line-strong); }
+  .seg-sides button.active { background: var(--accent); color: #fff; }
+  .chip.file { background: #fff; color: var(--text); border-color: var(--line-strong); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+  .viewer-hint { position: absolute; bottom: 16px; left: 16px; font-size: 11px; color: var(--muted); letter-spacing: 0.4px; z-index: 5; }
+  .reset-btn { position: absolute; top: 16px; right: 16px; z-index: 5; background: #fff; color: var(--text); border: 1px solid var(--line-strong); font-weight: 600; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .loading-pane { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(246,246,246,0.9); z-index: 60; flex-direction: column; gap: 14px; }
+  .loading-pane.hidden { display: none; }
+  .spinner { width: 40px; height: 40px; border: 2px solid var(--divider); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-pane .txt { font-size: 12px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* ---------- Right panel ---------- */
+  #side-pane { background: var(--bg-elev); border-left: 1px solid var(--divider); overflow-y: auto; display: flex; flex-direction: column; }
+  @media (max-width: 900px) { #side-pane { border-left: none; border-top: 1px solid var(--divider); max-height: 55vh; } }
+  .tabs { display: flex; border-bottom: 1px solid var(--divider); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+  .tabs button { flex: 1; background: transparent; color: var(--muted); border: none; padding: 14px 12px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid transparent; }
+  .tabs button:hover { color: var(--text); }
+  .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tabs button .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+  .tabs button.active .dot { background: var(--accent); }
+
+  .panel-section { padding: 24px; border-bottom: 1px solid var(--divider); }
+  .panel-section:last-child { border-bottom: none; }
+  .panel-section h2 { font-size: 11px; font-weight: 500; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+  .readout { display: grid; grid-template-columns: 1fr auto; gap: 9px 12px; font-size: 13px; }
+  .readout .label { color: var(--muted); }
+  .readout .value { color: var(--text); text-align: right; font-weight: 500; }
+  .readout .value small { color: var(--muted); font-weight: 400; }
+  .src-note { margin-top: 12px; font-size: 11px; color: var(--muted); letter-spacing: 0.3px; line-height: 1.45; }
+
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 12px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .field label .lc { text-transform: none; letter-spacing: 0; color: var(--accent); }
+  select, input.txt { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--divider); padding: 10px 12px; font-family: inherit; font-size: 14px; outline: none; }
+  select:focus, input.txt:focus { border-color: var(--accent); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--divider); }
+  .seg button { background: transparent; color: var(--muted); border: none; padding: 10px 12px; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--divider); }
+  .seg button.active { background: var(--accent); color: #fff; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sw { width: 28px; height: 28px; border: 2px solid transparent; outline: 1px solid rgba(7,15,65,0.18); cursor: pointer; }
+  .sw.active { border-color: var(--accent); }
+
+  .quote-hero { position: relative; overflow: hidden; padding: 26px 24px; background: var(--accent); border-bottom: 1px solid var(--divider); }
+  .quote-hero::before { content: ""; position: absolute; top: 0; left: 0; width: 0; height: 0; border-top: 30px solid var(--lime); border-right: 30px solid transparent; }
+  .quote-hero .total { font-size: 44px; font-weight: 700; color: var(--lime); letter-spacing: -1.5px; line-height: 1; display: flex; align-items: baseline; }
+  .quote-hero .unit { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 8px; letter-spacing: 0.4px; }
+  .quote-hero .disclaimer { margin-top: 14px; font-size: 11px; color: rgba(255,255,255,0.72); letter-spacing: 0.3px; line-height: 1.5; }
+
+  .breakdown { font-size: 12px; }
+  .breakdown .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; color: var(--muted); border-bottom: 1px solid #ECECEA; }
+  .breakdown .row:last-child { border-bottom: none; }
+  .breakdown .row .lbl small { color: #9094a4; }
+  .breakdown .row .amt { color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; display: inline-flex; align-items: baseline; }
+  .breakdown .row.sub { border-top: 1px solid var(--divider); margin-top: 6px; padding-top: 10px; color: var(--text); font-weight: 600; }
+  .breakdown .row.sub .amt { font-weight: 600; }
+  .breakdown .row.total-row { border-top: 1px solid var(--divider); border-bottom: none; margin-top: 6px; padding-top: 10px; color: var(--text); font-weight: 700; font-size: 14px; }
+  .empty-hint { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+  .cta-primary { width: 100%; background: var(--lime); color: var(--text); border: none; padding: 14px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 14px; letter-spacing: 0.6px; text-transform: uppercase; margin-top: 18px; }
+  .cta-primary:hover { background: var(--lime-hover); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg-elev); color: var(--text); border: 1px solid var(--accent); border-left-width: 3px; padding: 14px 22px; font-size: 14px; letter-spacing: 0.3px; opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; z-index: 500; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<script>if (new URLSearchParams(location.search).has('embed')) document.body.classList.add('embedded');</script>
+
+<nav class="topbar">
+  <div class="brand">
+    <img src="../../brand/FF_logo_blue.svg" alt="Flex Factory" class="brand-logo">
+    <div class="sub">Instant Quote</div>
+  </div>
+  <div class="actions">
+    <span class="chip live" id="status-chip">● PCB</span>
+  </div>
+</nav>
+
+<main>
+  <section id="viewer-pane">
+    <div id="viewer-stage"><canvas id="board-canvas"></canvas></div>
+    <div class="viewer-overlay" id="viewer-overlay" style="display:none;">
+      <div class="seg-sides" id="side-toggle">
+        <button data-side="top" class="active">Top</button>
+        <button data-side="bottom">Bottom</button>
+      </div>
+      <span class="chip file mono" id="file-chip" style="display:none;"></span>
+    </div>
+    <button class="reset-btn" id="reset-btn" style="display:none;">↺ New file</button>
+    <div class="viewer-hint" id="viewer-hint" style="display:none;">Top &amp; bottom rendered from your Gerber · parsed in-browser</div>
+
+    <div id="loading-pane" class="loading-pane hidden">
+      <div class="spinner"></div>
+      <div class="txt" id="loading-text">Rendering board…</div>
+    </div>
+
+    <div id="upload-pane">
+      <div class="drop" id="drop-zone">
+        <div class="icon">↑</div>
+        <h1>Drop your Gerber files to get an instant quote</h1>
+        <p>Upload a single <span class="mono" style="color:var(--accent)">.zip</span> containing your Gerber (RS-274X) + NC drill files. We render the board and price it in your browser — nothing is uploaded.</p>
+        <button class="cta" id="browse-btn" type="button">Browse files</button>
+        <input type="file" id="file-input" accept=".zip,.gbr,.ger,.drl,.gtl,.gbl,.gts,.gbs,.gto,.gbo,.gko,.gm1,.txt" multiple style="display:none;">
+        <div class="hint">Gerber · Excellon drill · ZIP · up to 100 MB</div>
+        <div class="error" id="drop-error"></div>
+      </div>
+    </div>
+
+    <div id="settings-pane">
+      <div class="settings-header">
+        <div>
+          <h1>PCB Engine · Fabrication rates</h1>
+          <div class="sub">Admin — every rate drives the customer breakdown · saved to this browser</div>
+        </div>
+        <div class="settings-actions">
+          <button type="button" class="btn-ghost" id="settings-export">Export</button>
+          <button type="button" class="btn-ghost" id="settings-import">Import</button>
+          <button type="button" class="btn-ghost" id="settings-reset">Reset to defaults</button>
+          <button type="button" class="btn-solid" id="settings-save">Save &amp; apply</button>
+          <input type="file" id="settings-import-file" accept=".json" style="display:none;">
+        </div>
+      </div>
+      <div id="settings-body"></div>
+    </div>
+  </section>
+
+  <aside id="side-pane">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="ff"><span class="dot"></span>PCB Engine</button>
+      <button type="button" class="tab-btn" data-tab="settings"><span class="dot"></span>Settings</button>
+    </div>
+
+    <div class="quote-hero" id="quote-hero" style="display:none;">
+      <div class="total" id="total-price">—</div>
+      <div class="unit" id="unit-price">—</div>
+      <div class="disclaimer">Indicative — generated in your browser. Circuit Guild confirms a firm quote before anything is charged.</div>
+    </div>
+
+    <div class="panel-section" id="readout-section" style="display:none;">
+      <h2>Board</h2>
+      <div class="readout" id="board-readout"></div>
+      <div class="src-note" id="src-note"></div>
+    </div>
+
+    <div class="panel-section" id="config-section" style="display:none;">
+      <h2>Specification</h2>
+      <div id="pcb-params"></div>
+    </div>
+
+    <div class="panel-section" id="breakdown-section">
+      <h2>Breakdown</h2>
+      <div class="breakdown" id="breakdown"><div class="empty-hint">Your itemized fabrication breakdown appears here once a board is loaded.</div></div>
+      <button class="cta-primary" id="request-btn">Request supplier match</button>
+    </div>
+  </aside>
+</main>
+
+<div class="tab-floating">
+  <button type="button" data-tab="ff">PCB Engine</button>
+  <button type="button" data-tab="settings" class="active">Settings</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { unzipSync, strFromU8 } from 'https://esm.sh/fflate@0.8.2';
+import { read, plot, renderLayers, renderBoard, stringifySvg } from 'https://esm.sh/@tracespace/core@5.0.0-alpha.0';
+
+/* ---------------- default fab rates (admin-editable, SAR) ---------------- */
+const DEFAULTS = {
+  currency: 'SAR',
+  layer: {
+    '1': { setup: 80,  board: 2.0, area: 0.18 },
+    '2': { setup: 100, board: 2.5, area: 0.22 },
+    '4': { setup: 220, board: 5.0, area: 0.45 },
+    '6': { setup: 380, board: 8.0, area: 0.70 },
+  },
+  qty: { '5':1.00, '10':0.85, '25':0.70, '50':0.58, '100':0.48, '200':0.40 },
+  finish: { 'HASL (lead-free)':0, 'ENIG':0.35, 'OSP':0.08 },
+  copper: { '1 oz':0, '2 oz':0.15, '3 oz':0.40 },
+  mask:   { 'Green':0, 'Red':0.4, 'Yellow':0.4, 'Blue':0.4, 'White':0.6, 'Black':0.6, 'Purple':0.9 },
+  thick:  { '0.6':0.3, '0.8':0.2, '1.0':0.1, '1.2':0.05, '1.6':0, '2.0':0.3 },
+  feat:   { '6/6 mil':0, '5/5 mil':0.3, '4/4 mil':0.8, '3.5/3.5 mil':1.6 },
+  via:    { 'Tented':0, 'Untented':0, 'Plugged':0.5, 'POFV':1.2 },
+  goldFingers: 1.2, drillRate: 0.0008, testFee: 40, platformPct: 12,
+  lead:   { 'Standard · 5-7 days':1.0, 'Batch · 48 h':1.25, 'Express · 24 h':1.6 },
+};
+const SKEY = 'ff_pcb_rates_v1';
+function loadSettings(){ try { const s = JSON.parse(localStorage.getItem(SKEY)); return s ? deepMerge(structuredClone(DEFAULTS), s) : structuredClone(DEFAULTS); } catch(e){ return structuredClone(DEFAULTS); } }
+function saveSettings(s){ localStorage.setItem(SKEY, JSON.stringify(s)); }
+function deepMerge(a,b){ for(const k in b){ if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])){ a[k]=deepMerge(a[k]||{},b[k]); } else a[k]=b[k]; } return a; }
+let SET = loadSettings();
+
+/* ---------------- state ---------------- */
+const state = {
+  loaded:false, side:'top',
+  rawTop:null, rawBottom:null, imgTop:null, imgBottom:null,
+  detected: { w:null, h:null, layers:null, holes:null, minHole:null, source:null, material:null, thick:null },
+  spec: { material:'FR-4', layers:'2', w:'', h:'', qty:'100', thick:'1.6', mask:'Green', finish:'HASL (lead-free)', copper:'1 oz', via:'Tented', feat:'6/6 mil', gold:'No', lead:'Standard · 5-7 days' },
+};
+
+/* ---------------- riyal glyph (matches marketplace) ---------------- */
+const RY_PATHS = '<path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/>';
+const ry = (em)=> '<svg viewBox="0 0 1124.14 1256.39" style="height:'+em+'em;width:auto;display:inline-block;vertical-align:-0.06em;margin-right:.16em;flex-shrink:0" fill="currentColor" aria-hidden="true">'+RY_PATHS+'</svg>';
+
+/* ---------------- mask preview colours (soldermask hex baked by tracespace = #004200) ---------------- */
+const MASK_SWATCH = { Green:'#0a7a3b', Red:'#b3261e', Yellow:'#e3b505', Blue:'#13408c', White:'#e8e8e8', Black:'#15171c', Purple:'#5b2a86' };
+const MASK_BOARD  = { Green:'#0a5c2a', Red:'#7c1518', Yellow:'#a6850a', Blue:'#143a87', White:'#d7d9da', Black:'#1a1c20', Purple:'#4a1d6b' };
+
+/* ---------------- helpers ---------------- */
+const $ = (s,r=document)=>r.querySelector(s);
+const fmt = (n)=> (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+const money = (n)=> ry(0.82) + fmt(n);
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900); }
+/* embed: report content height so the parent iframe auto-sizes (no clipped price) */
+let __lastH = 0;
+function postHeight(){ if(!document.body.classList.contains('embedded')) return; const h = Math.ceil(document.body.scrollHeight); if (h && h !== __lastH){ __lastH = h; try { parent.postMessage({ type:'ffPcbHeight', height: h }, '*'); } catch(e){} } }
+
+/* ---------------- embed: hide admin in customer view ---------------- */
+if (document.body.classList.contains('embedded')) { /* tabs hidden via CSS; ensure FF view */ }
+
+/* ---------------- Gerber processing ---------------- */
+const DOC_RE = /(_fab|fab\.|assembly|drawing|comment|user_)/i;
+const SKIP_RE = /\.(gbrjob|json|md|csv|pdf|png|jpe?g|zip|ipc|rep|html?)$/i;
+
+function loadImg(url){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=url; }); }
+function setLoading(on, txt){ $('#loading-pane').classList.toggle('hidden', !on); if(txt) $('#loading-text').textContent = txt; }
+function dropError(msg){ const e=$('#drop-error'); if(!msg){ e.classList.remove('show'); return; } e.textContent=msg; e.classList.add('show'); }
+
+async function handleFiles(fileList){
+  dropError('');
+  const all = Array.from(fileList);
+  let entries = {}, gbrjobText = null;
+  for (const f of all){
+    if (/\.zip$/i.test(f.name)){
+      const unz = unzipSync(new Uint8Array(await f.arrayBuffer()));
+      for (const p of Object.keys(unz)){ if (p.endsWith('/')) continue; const base = p.split('/').pop(); const text = strFromU8(unz[p]); if (/\.gbrjob$/i.test(base)) gbrjobText = text; entries[base] = text; }
+    } else { const text = await f.text(); if (/\.gbrjob$/i.test(f.name)) gbrjobText = text; entries[f.name] = text; }
+  }
+  const names = Object.keys(entries);
+  if (!names.length){ dropError('No files found in the upload.'); return; }
+  const renderNames = names.filter(n => !SKIP_RE.test(n) && !DOC_RE.test(n));
+  if (!renderNames.length){ dropError('No Gerber/drill layers recognized.'); return; }
+
+  $('#upload-pane').classList.add('hidden');
+  setLoading(true, 'Rendering board…');
+  await new Promise(r=>setTimeout(r, 16));
+
+  try {
+    const files = renderNames.map(n => new File([entries[n]], n, {type:'text/plain'}));
+    const rd = await read(files);
+    const pl = await plot(rd);
+    const board = renderBoard(renderLayers(pl));
+    state.rawTop = stringifySvg(board.top);
+    state.rawBottom = stringifySvg(board.bottom);
+
+    // ---- auto-detect ----
+    const det = state.detected = { source:null, material:null, thick:null };
+    if (gbrjobText){ try {
+      const j = JSON.parse(gbrjobText); const gs = j.GeneralSpecs || {};
+      if (gs.Size){ det.w = gs.Size.X; det.h = gs.Size.Y; }
+      if (gs.LayerNumber) det.layers = gs.LayerNumber;
+      if (gs.BoardThickness) det.thick = gs.BoardThickness;
+      const mat = (j.MaterialStackup||[]).find(m=>/dielectric/i.test(m.Type) && m.Material);
+      if (mat) det.material = mat.Material;
+      det.source = 'Gerber job file';
+    } catch(e){} }
+    const vb = (state.rawTop.match(/viewBox="([^"]+)"/)||[])[1];
+    if ((det.w==null || det.h==null) && vb){ const p=vb.split(/\s+/).map(Number); det.w=Math.abs(p[2]); det.h=Math.abs(p[3]); det.source = det.source||'Board geometry'; }
+    if (det.layers==null){ det.layers = (rd.layers||[]).filter(l=>l.type==='copper').length || 2; det.source = det.source||'Board geometry'; }
+    const drill = countHoles(names.filter(n=>/\.(drl|xln|nc|drd|txt)$/i.test(n)).map(n=>entries[n]));
+    det.holes = drill.holes; det.minHole = drill.minDia;
+
+    applyDetected();
+    await applyTheme();             // builds themed images for current mask
+    state.loaded = true;
+    setLoading(false);
+    $('#viewer-overlay').style.display = 'flex';
+    $('#reset-btn').style.display = 'block';
+    $('#viewer-hint').style.display = 'block';
+    $('#file-chip').style.display = all.length ? 'inline-block' : 'none';
+    $('#file-chip').textContent = all.find(f=>/\.zip$/i.test(f.name))?.name || (all[0] && all[0].name) || '';
+    $('#board-canvas').style.display = 'block';
+    $('#quote-hero').style.display = 'block';
+    $('#readout-section').style.display = 'block';
+    $('#config-section').style.display = 'block';
+    $('#status-chip').textContent = '● QUOTED';
+    renderReadout(); buildParams(); recompute();
+    [60, 250, 600].forEach(ms=> setTimeout(postHeight, ms));   // settle height after grid/layout reflow
+  } catch(e){
+    console.error(e);
+    setLoading(false);
+    $('#upload-pane').classList.remove('hidden');
+    dropError('Could not render these files. Make sure the ZIP holds standard Gerber (RS-274X) + drill files.');
+  }
+}
+
+function countHoles(texts){
+  let holes=0, minDia=Infinity;
+  for (let text of texts){ if (!text) continue;
+    const metric = !/INCH|M72|FILE_FORMAT=.*inch/i.test(text) || /METRIC|M71/i.test(text);
+    const tools={}; let cur=null;
+    for (const ln of text.split(/\r?\n/)){
+      let m = ln.match(/^T(\d+)[^C]*C([\d.]+)/i); if (m){ tools[m[1]] = parseFloat(m[2]) * (metric?1:25.4); continue; }
+      m = ln.match(/^T(\d+)\s*$/i); if (m){ cur=m[1]; continue; }
+      if (/[XY][-\d.]/.test(ln) && /^[XY]/.test(ln.trim())){ holes++; if (cur&&tools[cur]) minDia=Math.min(minDia,tools[cur]); }
+    }
+  }
+  return { holes, minDia: isFinite(minDia)? Math.round(minDia*100)/100 : null };
+}
+
+function applyDetected(){
+  const d = state.detected;
+  if (d.w) state.spec.w = (Math.round(d.w*100)/100).toString();
+  if (d.h) state.spec.h = (Math.round(d.h*100)/100).toString();
+  if (d.layers){ state.spec.layers = d.layers<=1?'1':d.layers<=2?'2':d.layers<=4?'4':'6'; }
+  if (d.thick){ state.spec.thick = ['0.6','0.8','1.0','1.2','1.6','2.0'].reduce((a,b)=>Math.abs(b-d.thick)<Math.abs(a-d.thick)?b:a,'1.6'); }
+  if (d.material && /aluminum|aluminium/i.test(d.material)) state.spec.material='Aluminum';
+}
+
+/* ---------------- viewer + live mask recolour ---------------- */
+function themeSvg(raw){ return raw.replace(/#004200/gi, MASK_BOARD[state.spec.mask] || '#0a5c2a'); }
+async function applyTheme(){
+  const tTop = themeSvg(state.rawTop), tBot = themeSvg(state.rawBottom);
+  const urlTop = URL.createObjectURL(new Blob([tTop], {type:'image/svg+xml'}));
+  const urlBot = URL.createObjectURL(new Blob([tBot], {type:'image/svg+xml'}));
+  const [a,b] = await Promise.all([loadImg(urlTop), loadImg(urlBot)]);
+  state.imgTop = a; state.imgBottom = b;
+  drawBoard();
+}
+function drawBoard(){
+  if (!state.imgTop) return;
+  const img = state.side==='top' ? state.imgTop : state.imgBottom;
+  const pane = $('#viewer-stage');
+  const maxW = Math.max(120, pane.clientWidth - 88), maxH = Math.max(120, pane.clientHeight - 88);
+  const iw = img.naturalWidth||img.width, ih = img.naturalHeight||img.height;
+  const scale = Math.min(maxW/iw, maxH/ih, 8);
+  const cv = $('#board-canvas'); cv.width = Math.round(iw*scale); cv.height = Math.round(ih*scale);
+  const ctx = cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(img, 0,0, cv.width, cv.height);
+  postHeight();
+}
+window.addEventListener('resize', ()=>{ if(state.loaded) drawBoard(); });
+
+function renderReadout(){
+  const d = state.detected;
+  const area = (parseFloat(state.spec.w)*parseFloat(state.spec.h)/100);
+  const rows = [
+    ['Board size', (d.w?fmt(d.w):'—')+' × '+(d.h?fmt(d.h):'—')+' <small>mm</small>'],
+    ['Area', (area?fmt(area):'—')+' <small>cm²</small>'],
+    ['Copper layers', d.layers||'—'],
+    ['Plated holes', d.holes!=null? d.holes.toLocaleString() : '—'],
+    ['Min hole', d.minHole? d.minHole+' <small>mm</small>' : '—'],
+  ];
+  $('#board-readout').innerHTML = rows.map(([k,v])=>'<div class="label">'+k+'</div><div class="value mono">'+v+'</div>').join('');
+  $('#src-note').textContent = d.source ? ('Auto-detected from '+d.source+'. Override any field below.') : '';
+}
+
+/* ---------------- params ---------------- */
+function sel(label, key, opts, hint){
+  return '<div class="field"><label>'+label+(hint?' <span class="lc">'+hint+'</span>':'')+'</label>'
+    + '<select data-spec="'+key+'">'+opts.map(o=>'<option'+(state.spec[key]==o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>';
+}
+function buildParams(){
+  const p = $('#pcb-params');
+  p.innerHTML =
+    sel('Base material','material',['FR-4','Aluminum'])
+    + sel('Layers','layers',['1','2','4','6'], state.detected.layers?('detected '+state.detected.layers):'')
+    + '<div class="field"><label>Board size <span class="lc">mm</span></label><div class="row2">'
+      + '<input class="txt" data-spec="w" value="'+state.spec.w+'" inputmode="decimal" placeholder="W">'
+      + '<input class="txt" data-spec="h" value="'+state.spec.h+'" inputmode="decimal" placeholder="H"></div></div>'
+    + sel('Quantity (pcs)','qty',Object.keys(SET.qty))
+    + sel('Thickness (mm)','thick',['0.6','0.8','1.0','1.2','1.6','2.0'])
+    + '<div class="field"><label>Solder-mask colour</label><div class="swatches" id="swatches">'
+      + Object.keys(SET.mask).map(c=>'<div class="sw'+(state.spec.mask==c?' active':'')+'" data-mask="'+c+'" title="'+c+'" style="background:'+MASK_SWATCH[c]+'"></div>').join('')+'</div></div>'
+    + sel('Surface finish','finish',Object.keys(SET.finish))
+    + sel('Outer copper weight','copper',Object.keys(SET.copper))
+    + sel('Via covering','via',Object.keys(SET.via))
+    + sel('Min track / spacing','feat',Object.keys(SET.feat))
+    + '<div class="field"><label>Gold fingers</label><div class="seg" id="seg-gold">'
+      + ['No','Yes'].map(o=>'<button data-gold="'+o+'" class="'+(state.spec.gold==o?'active':'')+'">'+o+'</button>').join('')+'</div></div>'
+    + sel('Lead time','lead',Object.keys(SET.lead));
+
+  p.querySelectorAll('[data-spec]').forEach(el=> el.addEventListener('input', e=>{
+    const k = e.target.dataset.spec; state.spec[k] = e.target.value;
+    if (k==='w'||k==='h') renderReadout();
+    recompute();
+  }));
+  $('#swatches').querySelectorAll('.sw').forEach(el=> el.addEventListener('click', async ()=>{
+    state.spec.mask = el.dataset.mask;
+    $('#swatches').querySelectorAll('.sw').forEach(s=>s.classList.toggle('active', s===el));
+    await applyTheme();    // <-- live preview recolour
+    recompute();
+  }));
+  $('#seg-gold').querySelectorAll('button').forEach(el=> el.addEventListener('click', ()=>{
+    state.spec.gold = el.dataset.gold;
+    $('#seg-gold').querySelectorAll('button').forEach(b=>b.classList.toggle('active', b===el));
+    recompute();
+  }));
+}
+
+/* ---------------- pricing ---------------- */
+function nearestQtyFactor(qty){ const tiers = Object.keys(SET.qty).map(Number).sort((a,b)=>a-b); let f = SET.qty[tiers[0]]; for (const t of tiers){ if (qty>=t) f = SET.qty[String(t)]; } return f; }
+function compute(){
+  const s = state.spec;
+  const w = parseFloat(s.w)||0, h = parseFloat(s.h)||0, qty = parseInt(s.qty)||0;
+  const area = w*h/100;
+  const lay = SET.layer[s.layers] || SET.layer['2'];
+  const qf = nearestQtyFactor(qty);
+  const holes = state.detected.holes||0;
+  const perBoardBase = (lay.board + lay.area*area) * qf;
+  const adders = [
+    ['Surface finish · '+s.finish, SET.finish[s.finish]*area],
+    ['Copper weight · '+s.copper, SET.copper[s.copper]*area],
+    ['Solder-mask · '+s.mask, SET.mask[s.mask]],
+    ['Thickness · '+s.thick+' mm', SET.thick[s.thick]],
+    ['Fine features · '+s.feat, SET.feat[s.feat]],
+    ['Via covering · '+s.via, SET.via[s.via]],
+  ];
+  if (s.gold==='Yes') adders.push(['Gold fingers', SET.goldFingers]);
+  if (holes) adders.push(['Drilling · '+holes+' holes', SET.drillRate*holes]);
+  const items = [];
+  items.push({ l:'Engineering / tooling', s:'one-time · '+s.layers+'-layer', v: lay.setup });
+  items.push({ l:'Board fabrication', s:qty+' pcs · '+fmt(area)+' cm² · '+s.layers+'L', v: perBoardBase*qty });
+  for (const [l,per] of adders){ if (per>0) items.push({ l, s:qty+' pcs', v: per*qty }); }
+  items.push({ l:'Electrical test', s:'flying probe · per order', v: SET.testFee });
+  const subtotal = items.reduce((a,b)=>a+b.v,0);
+  const leadMult = SET.lead[s.lead]||1;
+  const leadAdd = subtotal*(leadMult-1);
+  const afterLead = subtotal+leadAdd;
+  const platform = afterLead*SET.platformPct/100;
+  const total = afterLead+platform;
+  return { items, subtotal, leadMult, leadAdd, platform, total, unit: qty?total/qty:0, qty };
+}
+function recompute(){
+  if (!state.loaded) return;
+  const r = compute();
+  $('#total-price').innerHTML = ry(0.62)+fmt(r.total);
+  $('#unit-price').innerHTML = r.qty? (money(r.unit)+' per board · '+r.qty+' pcs') : '';
+  let html = '';
+  for (const it of r.items) html += row(it.l, it.s, money(it.v));
+  html += row('Subtotal','', money(r.subtotal), 'sub');
+  if (r.leadAdd>0.005) html += row('Lead-time uplift','×'+r.leadMult.toFixed(2), money(r.leadAdd));
+  html += row('Platform fee', SET.platformPct+'%', money(r.platform));
+  html += row('Total estimate','', money(r.total), 'total-row');
+  $('#breakdown').innerHTML = html;
+  postHeight();
+}
+function row(l,s,amt,cls=''){ return '<div class="row '+cls+'"><div class="lbl">'+l+(s?' <small>'+s+'</small>':'')+'</div><div class="amt">'+amt+'</div></div>'; }
+
+/* ---------------- settings ---------------- */
+function buildSettings(){
+  const body = $('#settings-body');
+  const tbl = (title, obj, cols) => {
+    const rows = Object.keys(obj).map(k=>'<tr><td>'+k+'</td><td><input data-grp="'+title+'" data-key="'+k+'" value="'+obj[k]+'"></td></tr>').join('');
+    return '<div class="settings-section"><h3>'+title+'</h3><div class="settings-body-pad"><table class="mats-table"><tr><th>'+cols[0]+'</th><th>'+cols[1]+'</th></tr>'+rows+'</table></div></div>';
+  };
+  const layRows = Object.keys(SET.layer).map(k=>'<tr><td>'+k+'-layer</td>'
+    + '<td><input data-grp="layer.setup" data-key="'+k+'" value="'+SET.layer[k].setup+'"></td>'
+    + '<td><input data-grp="layer.board" data-key="'+k+'" value="'+SET.layer[k].board+'"></td>'
+    + '<td><input data-grp="layer.area" data-key="'+k+'" value="'+SET.layer[k].area+'"></td></tr>').join('');
+  const layCard = '<div class="settings-section"><h3>Fabrication by layer count</h3><div class="settings-body-pad"><table class="mats-table">'
+    + '<tr><th>Layers</th><th>Setup</th><th>Per board</th><th>Per cm²</th></tr>'+layRows+'</table></div></div>';
+  const scalar = '<div class="settings-section"><h3>Order-level</h3><div class="settings-body-pad"><table class="mats-table">'
+    + '<tr><th>Item</th><th>Value</th></tr>'
+    + '<tr><td>Gold fingers (per board)</td><td><input data-grp="scalar" data-key="goldFingers" value="'+SET.goldFingers+'"></td></tr>'
+    + '<tr><td>Drill rate (per hole / board)</td><td><input data-grp="scalar" data-key="drillRate" value="'+SET.drillRate+'"></td></tr>'
+    + '<tr><td>Electrical test (per order)</td><td><input data-grp="scalar" data-key="testFee" value="'+SET.testFee+'"></td></tr>'
+    + '<tr><td>Platform fee (%)</td><td><input data-grp="scalar" data-key="platformPct" value="'+SET.platformPct+'"></td></tr>'
+    + '</table></div></div>';
+  body.innerHTML = layCard
+    + tbl('qty', SET.qty, ['Qty ≥','× / board'])
+    + tbl('finish', SET.finish, ['Surface finish','per cm²'])
+    + tbl('copper', SET.copper, ['Copper weight','per cm²'])
+    + tbl('mask', SET.mask, ['Mask colour','per board'])
+    + tbl('thick', SET.thick, ['Thickness (mm)','per board'])
+    + tbl('feat', SET.feat, ['Track / space','per board'])
+    + tbl('via', SET.via, ['Via covering','per board'])
+    + tbl('lead', SET.lead, ['Lead time','×'])
+    + scalar;
+}
+function collectSettings(){
+  const next = structuredClone(SET);
+  $('#settings-body').querySelectorAll('input').forEach(inp=>{
+    const grp = inp.dataset.grp, key = inp.dataset.key, val = inp.value.trim();
+    if (grp==='scalar'){ next[key] = parseFloat(val)||0; }
+    else if (grp.startsWith('layer.')){ next.layer[key][grp.split('.')[1]] = parseFloat(val)||0; }
+    else { next[grp][key] = parseFloat(val)||0; }
+  });
+  return next;
+}
+
+/* ---------------- tab switching (FF Engine / Settings) ---------------- */
+function setTab(tab){
+  const settings = tab==='settings';
+  $('main').classList.toggle('settings-active', settings);
+  $('#settings-pane').classList.toggle('active', settings);
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.tab-floating button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  if (settings) buildSettings();
+}
+document.querySelectorAll('.tab-btn, .tab-floating button').forEach(b=> b.addEventListener('click', ()=> setTab(b.dataset.tab)));
+
+/* ---------------- viewer events ---------------- */
+$('#side-toggle').addEventListener('click', e=>{ const b=e.target.closest('[data-side]'); if(!b)return; state.side=b.dataset.side; $('#side-toggle').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b)); drawBoard(); });
+$('#browse-btn').addEventListener('click', ()=> $('#file-input').click());
+$('#file-input').addEventListener('change', e=>{ if(e.target.files.length) handleFiles(e.target.files); });
+$('#reset-btn').addEventListener('click', ()=> location.reload());
+const dz = $('#drop-zone');
+['dragover','dragenter'].forEach(ev=> dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev=> dz.addEventListener(ev, e=>{ e.preventDefault(); if(ev!=='drop') dz.classList.remove('drag'); }));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+/* ---------------- settings events ---------------- */
+$('#settings-save').addEventListener('click', ()=>{ SET=collectSettings(); saveSettings(SET); if(state.loaded){ buildParams(); recompute(); } setTab('ff'); toast('Rates saved'); });
+$('#settings-reset').addEventListener('click', ()=>{ SET=structuredClone(DEFAULTS); saveSettings(SET); buildSettings(); if(state.loaded){ buildParams(); recompute(); } toast('Reset to defaults'); });
+$('#settings-export').addEventListener('click', ()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(SET,null,2)],{type:'application/json'})); a.download='ff-pcb-rates.json'; a.click(); });
+$('#settings-import').addEventListener('click', ()=> $('#settings-import-file').click());
+$('#settings-import-file').addEventListener('change', async e=>{ const f=e.target.files[0]; if(!f)return; try{ SET=deepMerge(structuredClone(DEFAULTS), JSON.parse(await f.text())); saveSettings(SET); buildSettings(); if(state.loaded){ buildParams(); recompute(); } toast('Rates imported'); }catch(err){ toast('Invalid JSON'); } });
+$('#request-btn').addEventListener('click', ()=> toast(state.loaded? 'Demo — a real request would be sent to the supplier' : 'Upload a board first'));
+
+/* ---------------- embed init: free html height + report content height for iframe auto-sizing ---------------- */
+if (document.body.classList.contains('embedded')) {
+  document.documentElement.style.height = 'auto';   // it was 100% — let html/body grow to content
+  document.documentElement.style.overflow = 'visible';
+  window.addEventListener('load', postHeight);
+  window.addEventListener('resize', postHeight);
+  [120, 400, 900].forEach(ms=> setTimeout(postHeight, ms));   // explicit ticks (preview may throttle ResizeObserver)
+  try { new ResizeObserver(postHeight).observe(document.body); } catch(e){}
+}
+</script>
+</body>
+</html>

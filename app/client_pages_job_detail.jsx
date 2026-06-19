@@ -562,14 +562,24 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
   const legacyQuote = job ? ((window.JOB_DETAILS || {})[job.id] || null) : null;
   const hasInstantQuote = !!(legacyQuote && legacyQuote.quote);
   const isFixed = job ? job.fixed && !hasInstantQuote : false;
-  const d = hasInstantQuote ? window.JOB_DETAIL_FIXED : isFixed ? window.JOB_DETAIL_FIXED : window.JOB_DETAIL;
+  const engineKey = (legacyQuote && legacyQuote.quoteEngine) || '3d';
+  const d = engineKey === 'pcb' ? ((window.JOB_DETAIL_PCB_BY_ID || {})[job.id] || window.JOB_DETAIL_PCB) : hasInstantQuote ? window.JOB_DETAIL_FIXED : isFixed ? window.JOB_DETAIL_FIXED : window.JOB_DETAIL;
   const [imgIdx, setImgIdx] = usePJob(0);
   const [selTier, setSelTier] = usePJob((hasInstantQuote || isFixed) ? d.tiers[2] : d.pricing[2]);
   const [ordering, setOrdering] = usePJob(false);
   const [quoting, setQuoting] = usePJob(false);
   const quoteRef = useRefJob(null);
   const galleryImages = d.galleryImages || [];
-  const quoteUrl = '../Flex%20Factory%20Instant%20Quote%20_standalone_.html';
+  // The PCB engine flows naturally and reports its content height so the iframe never clips the price.
+  const [engineH, setEngineH] = usePJob(engineKey === 'pcb' ? 1180 : 820);
+  useEffJob(() => {
+    if (engineKey !== 'pcb') return;
+    const onMsg = (e) => { if (e.data && e.data.type === 'ffPcbHeight' && e.data.height) setEngineH(Math.max(560, Math.min(3000, e.data.height))); };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [engineKey]);
+  const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html' };
+  const quoteUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
   const quoteVersion = 'c733ed2';
   const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (legacyQuote && legacyQuote.quoteProcess ? '&process=' + legacyQuote.quoteProcess : '');
 
@@ -644,7 +654,7 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--ff-lime)' }} />
                   <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink-2)' }}>FF Instant-Quote Engine · Live</span>
                 </div>
-                <iframe src={embedUrl} title="FlexFactory Instant Quote" loading="lazy" style={{ width: '100%', height: 820, border: 0, display: 'block' }} />
+                <iframe src={embedUrl} title="FlexFactory Instant Quote" loading="lazy" style={{ width: '100%', height: engineH, border: 0, display: 'block' }} />
               </div>
               <p style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 12, lineHeight: 1.5 }}>Prices are indicative, generated in your browser from the uploaded geometry. {d.vendor} confirms a firm quote — covering manufacturability, finish and tolerances — before anything is charged.</p>
             </section>

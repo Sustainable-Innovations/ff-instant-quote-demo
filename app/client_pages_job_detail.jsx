@@ -692,6 +692,7 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
           ? <OrderRail d={d} selTier={selTier} setSelTier={setSelTier} onStart={startOrder} />
           : <QuoteRail d={d} selectedTier={selTier} onStart={startQuote} />}
       </div>
+      <RelatedRail title="Stock up on materials" items={(window.MATERIALS || []).slice(0, 4)} go={go} />
     </div>
   );
 }

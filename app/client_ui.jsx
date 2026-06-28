@@ -59,23 +59,31 @@ function CornerBadge({ label, tone = 'lime', corner = 'tr' }) {
 
 /* ---------------- Placeholder photo tile ---------------- */
 // Branded placeholder standing in for a real product/space photo.
-function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', loading = 'lazy', dark, style, children }) {
+function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', loading = 'lazy', imageFit = 'cover', dark, style, children }) {
+  const [failed, setFailed] = usePCU(false);
+  useEffPCU(() => setFailed(false), [image]);
   const palettes = {
     blue: ['#0C3997', '#0135F4'], navy: ['#070F41', '#152255'], slate: ['#2A3050', '#3A4170'],
     teal: ['#0E5C6B', '#127E92'], green: ['#0E5E3C', '#13794E'],
   };
   const [a, b] = palettes[tone] || palettes.blue;
+  const hasImage = image && !failed;
+  const cleanContain = hasImage && imageFit === 'contain';
   return (
-    <div style={{ position: 'relative', height: h, background: `linear-gradient(135deg, ${a}, ${b})`, overflow: 'hidden', ...style }}>
-      <svg width="100%" height="100%" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5, zIndex: 0 }} aria-hidden="true">
-        <path d="M0 200 L120 90 L240 200 Z" fill="rgba(255,255,255,0.05)" />
-        <path d="M180 240 L320 70 L460 240 Z" fill="rgba(255,255,255,0.05)" />
-        <path d="M300 0 L400 0 L400 110 Z" fill="rgba(1,53,244,0.25)" />
-      </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 0 }}>
-        <Icon name={icon} size={Math.min(54, h * 0.3)} stroke={1.4} style={{ color: 'rgba(255,255,255,0.62)' }} />
-      </div>
-      {image && <img src={image} alt={alt} loading={loading} decoding="async" onError={e => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+    <div style={{ position: 'relative', height: h, background: cleanContain ? '#fff' : `linear-gradient(135deg, ${a}, ${b})`, overflow: 'hidden', ...style }}>
+      {!cleanContain && (
+        <React.Fragment>
+          <svg width="100%" height="100%" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5, zIndex: 0 }} aria-hidden="true">
+            <path d="M0 200 L120 90 L240 200 Z" fill="rgba(255,255,255,0.05)" />
+            <path d="M180 240 L320 70 L460 240 Z" fill="rgba(255,255,255,0.05)" />
+            <path d="M300 0 L400 0 L400 110 Z" fill="rgba(1,53,244,0.25)" />
+          </svg>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 0 }}>
+            <Icon name={icon} size={Math.min(54, h * 0.3)} stroke={1.4} style={{ color: 'rgba(255,255,255,0.62)' }} />
+          </div>
+        </React.Fragment>
+      )}
+      {hasImage && <img src={image} alt={alt} loading={loading} decoding="async" onError={() => setFailed(true)} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: imageFit, display: 'block' }} />}
       {label && <span className="chamfer-sm" style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 2, height: 22, padding: '0 9px', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(7,15,65,0.55)', backdropFilter: 'blur(4px)', color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 600 }}><Icon name="image" size={12} />{label}</span>}
       {children}
     </div>
@@ -83,8 +91,13 @@ function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', l
 }
 
 /* ---------------- Public header ---------------- */
-const NAV_LINKS = [{ id: 'jobs', label: 'Jobs' }, { id: 'spaces', label: 'Spaces' }, { id: 'subscription', label: 'Subscription' }];
-function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery }) {
+const NAV_LINKS = [
+  { id: 'job', kind: 'job', label: 'Services' },
+  { id: 'space', kind: 'space', label: 'Spaces' },
+  { id: 'equipment', kind: 'equipment', label: 'Equipment' },
+  { id: 'material', kind: 'material', label: 'Materials' },
+];
+function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery, cartCount = 0, onCart }) {
   const [menuOpen, setMenuOpen] = usePCU(false);
   useEffPCU(() => { setMenuOpen(false); }, [route]);
   const close = () => setMenuOpen(false);
@@ -92,25 +105,33 @@ function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery }) 
     <React.Fragment>
       <header className="header-pad" style={{ height: 72, background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 22, padding: '0 28px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 50 }}>
         <button onClick={() => { go({ name: 'home' }); close(); }} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex', alignItems: 'center' }}><Wordmark /></button>
-        <nav className="desktop-only" style={{ display: 'flex', gap: 30, marginLeft: 14 }}>
-          {NAV_LINKS.map(l => (
-            <button key={l.id}
-              onClick={() => l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.id === 'jobs' ? 'job' : 'space' })}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--ff-blue)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--ink)'}
-              style={{ border: 'none', background: 'transparent', fontSize: 15, fontWeight: 600, color: 'var(--ink)', padding: '4px 0', transition: 'color .15s', cursor: 'pointer' }}>{l.label}</button>
-          ))}
+        <nav className="desktop-only" style={{ display: 'flex', gap: 26, marginLeft: 14 }}>
+          {NAV_LINKS.map(l => {
+            const active = route && route.name === 'browse' && l.kind && route.kind === l.kind;
+            return (
+              <button key={l.id}
+                onClick={() => l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.kind })}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.color = 'var(--ff-blue)'; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'var(--ink)'; }}
+                className="focus-lime"
+                style={{ border: 'none', background: 'transparent', fontSize: 15, fontWeight: active ? 700 : 600, color: active ? 'var(--ff-blue)' : 'var(--ink)', padding: '4px 0', borderBottom: active ? '2px solid var(--ff-blue)' : '2px solid transparent', transition: 'color .15s', cursor: 'pointer', whiteSpace: 'nowrap' }}>{l.label}</button>
+            );
+          })}
         </nav>
         <div className="desktop-only" style={{ flex: 1, display: 'flex', maxWidth: 640, margin: '0 auto' }}>
           <div className="chamfer-sm" style={{ display: 'flex', alignItems: 'center', gap: 10, height: 44, padding: '0 16px', background: 'var(--surface)', border: '1px solid var(--line-strong)', width: '100%' }}>
             <Icon name="search" size={18} style={{ color: 'var(--ink-3)' }} />
-            <input value={query || ''} onChange={e => setQuery && setQuery(e.target.value)} placeholder="Search jobs, spaces, vendors…"
+            <input value={query || ''} onChange={e => setQuery && setQuery(e.target.value)} placeholder="Search services, spaces, equipment, materials…"
               onKeyDown={e => { if (e.key === 'Enter') go({ name: 'browse', kind: 'job' }); }}
               style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, width: '100%', color: 'var(--ink)' }} />
           </div>
         </div>
         <button className="mobile-only" onClick={() => setMenuOpen(o => !o)} style={{ border: 'none', background: 'transparent', display: 'none', padding: 4, color: 'var(--ink)', marginLeft: 'auto', zIndex: 51 }}>
           <Icon name={menuOpen ? 'x' : 'menu'} size={26} />
+        </button>
+        <button onClick={() => onCart && onCart()} className="focus-lime" title="Cart" aria-label={`Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}`} style={{ position: 'relative', width: 42, height: 42, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)', cursor: 'pointer', flexShrink: 0 }}>
+          <Icon name="cart" size={22} stroke={1.9} />
+          {cartCount > 0 && <span className="mono-fig" style={{ position: 'absolute', top: 2, right: 0, minWidth: 18, height: 18, padding: '0 4px', borderRadius: 9, background: 'var(--ff-blue)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{cartCount}</span>}
         </button>
         <button className="desktop-only focus-lime" title="Language" style={{ width: 40, height: 40, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ff-blue)' }}><Icon name="external" size={20} stroke={2} /></button>
         {authed
@@ -125,13 +146,13 @@ function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery }) 
               <input defaultValue={query || ''}
                 onChange={e => setQuery && setQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { go({ name: 'browse', kind: 'job' }); close(); } }}
-                placeholder="Search jobs, spaces, vendors…"
+                placeholder="Search services, spaces, equipment, materials…"
                 style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 15, width: '100%', color: 'var(--ink)' }} autoFocus />
             </div>
           </div>
           <nav style={{ flex: 1 }}>
             {NAV_LINKS.map(l => (
-              <button key={l.id} onClick={() => { l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.id === 'jobs' ? 'job' : 'space' }); close(); }}
+              <button key={l.id} onClick={() => { l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.kind }); close(); }}
                 style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--line)', background: 'transparent', display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', fontSize: 16, fontWeight: 600, color: 'var(--ink)', textAlign: 'left', cursor: 'pointer' }}>
                 {l.label}
                 <Icon name="chevR" size={16} style={{ marginLeft: 'auto', color: 'var(--ink-3)' }} />
@@ -222,13 +243,27 @@ function CardTag({ children, light }) {
 }
 
 /* ---------------- Listing card (jobs + spaces, regular + featured) ---------------- */
-const TONE_FOR = { 'PCB Fab': 'green', '3D Printing': 'blue', 'CNC': 'slate', 'Laser': 'teal', 'Molding': 'navy' };
-function ListingCard({ item, featured, onOpen }) {
+const TONE_FOR = {
+  'PCB Fab': 'green', '3D Printing': 'blue', 'CNC': 'slate', 'Laser': 'teal', 'Molding': 'navy',
+  Electronics: 'green', Metalwork: 'slate', Filament: 'blue', Resin: 'teal', 'Sheet Stock': 'navy', Metal: 'slate',
+  Lifting: 'slate', Earthmoving: 'blue', Trucks: 'navy', Concrete: 'teal', Access: 'green', Compaction: 'slate',
+  Metals: 'slate', Wood: 'green', Plastics: 'blue', Rubber: 'navy', Glass: 'teal', Structural: 'slate', Fasteners: 'blue',
+};
+function ListingCard({ item, featured, onOpen, onAdd }) {
   const [hover, setHover] = usePCU(false);
   const isSpace = item.kind === 'space';
+  const isEquipment = item.kind === 'equipment';
+  const isMaterial = item.kind === 'material';
   const isFixed = item.fixed;
   const isInstant = item.instant;
-  const cta = isSpace ? 'BOOK NOW' : isFixed ? 'ORDER NOW' : isInstant ? 'GET INSTANT QUOTE' : 'GET QUOTE';
+  // CTA: jobs have sub-variants; everything else reads from KIND_META.
+  const km = (window.KIND_META && window.KIND_META[item.kind]) || {};
+  const cta = item.kind === 'job'
+    ? (isFixed ? 'ORDER NOW' : isInstant ? 'GET INSTANT QUOTE' : 'GET QUOTE')
+    : (km.cta || 'VIEW');
+  const lowStock = isMaterial && item.stock != null && item.stock <= 80;
+  const toast = useToast();
+  const handlePrimary = (e) => { e.stopPropagation(); if (isMaterial && onAdd) { onAdd(item); toast('Added to cart · ' + item.title); } else onOpen(); };
   const tone = TONE_FOR[item.cat] || 'blue';
 
   const tagsRow = (light) => (
@@ -250,7 +285,7 @@ function ListingCard({ item, featured, onOpen }) {
       <article onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
         className="chamfer" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', background: 'var(--ff-blue-deep)', cursor: 'pointer', boxShadow: hover ? 'var(--shadow-lg)' : 'var(--shadow-sm)', transition: 'box-shadow .18s', overflow: 'hidden' }}>
         <div style={{ position: 'relative' }}>
-          <Thumb icon={item.icon} tone={tone} h={230} image={item.image} alt={item.title} label={!item.image ? (isSpace ? 'Space photo' : 'Product photo') : null} />
+          <Thumb icon={item.icon} tone={tone} h={230} image={item.image} alt={item.title} imageFit={isMaterial || isEquipment ? 'contain' : 'cover'} label={!item.image ? (isSpace ? 'Space photo' : 'Product photo') : null} />
           <CornerBadge label={item.badge ? item.badge.l : 'FEATURED'} tone={item.badge ? item.badge.t : 'lime'} corner="tl" />
           {item.off > 0 && <CornerBadge label={`${item.off}% OFF`} tone="red" corner="tr" />}
         </div>
@@ -260,8 +295,10 @@ function ListingCard({ item, featured, onOpen }) {
           <div style={{ flex: 1 }} />
           {isSpace && <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#fff' }}><span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.6)' }}>FROM</span><Price value={item.from} unit="/hour" size={24} color="var(--ff-lime)" decimals /></div>}
           {isFixed && <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#fff' }}><span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.6)' }}>FROM</span><Price value={item.from} unit="/part" size={24} color="var(--ff-lime)" decimals={false} /></div>}
-          <button onClick={e => { e.stopPropagation(); onOpen(); }} className="chamfer-sm focus-lime" style={{ height: 48, border: 'none', background: '#fff', color: 'var(--ff-navy)', fontWeight: 700, fontSize: 14, letterSpacing: '0.04em', transition: 'background .15s' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--ff-lime)'} onMouseLeave={e => e.currentTarget.style.background = '#fff'}>{cta}</button>
+          {isEquipment && <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#fff' }}><span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.6)' }}>FROM</span><Price value={item.from} unit="/day" size={24} color="var(--ff-lime)" decimals={false} /></div>}
+          {isMaterial && <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#fff' }}><Price value={item.price} unit={'/ ' + item.unit} size={24} color="var(--ff-lime)" decimals={false} /></div>}
+          <button onClick={handlePrimary} className="chamfer-sm focus-lime" style={{ height: 48, border: 'none', background: '#fff', color: 'var(--ff-navy)', fontWeight: 700, fontSize: 14, letterSpacing: '0.04em', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--ff-lime)'} onMouseLeave={e => e.currentTarget.style.background = '#fff'}>{isMaterial && <Icon name="cart" size={16} />}{cta}</button>
         </div>
       </article>
     );
@@ -272,7 +309,7 @@ function ListingCard({ item, featured, onOpen }) {
     <article onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       className="chamfer" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', boxShadow: hover ? 'var(--shadow-md)' : 'var(--shadow-sm)', transform: hover ? 'translateY(-2px)' : 'none', transition: 'box-shadow .18s, transform .18s', overflow: 'hidden' }}>
       <div style={{ position: 'relative' }}>
-        <Thumb icon={item.icon} tone={tone} h={172} image={item.image} alt={item.title} />
+        <Thumb icon={item.icon} tone={tone} h={172} image={item.image} alt={item.title} imageFit={isMaterial || isEquipment ? 'contain' : 'cover'} />
         {item.badge && <CornerBadge label={item.badge.l} tone={item.badge.t} corner="tl" />}
         {item.off > 0 && <CornerBadge label={`${item.off}% OFF`} tone="red" corner="tr" />}
         {item.sub && <CornerBadge label="SUBSCRIBER ONLY" tone="gray" corner="tr" />}
@@ -289,13 +326,96 @@ function ListingCard({ item, featured, onOpen }) {
           <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-3)' }}>FROM</span>
           <Price value={item.from} unit="/part" size={19} color="var(--ff-blue)" decimals={false} gap={5} />
         </div>}
+        {isEquipment && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-3)' }}>FROM</span>
+          <Price value={item.from} unit="/day" size={19} color="var(--ff-blue)" decimals={false} gap={5} />
+        </div>}
+        {isMaterial && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+          {lowStock ? <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--warn)' }}>LOW STOCK</span> : <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-3)' }}>IN STOCK</span>}
+          <Price value={item.price} unit={'/ ' + item.unit} size={19} color="var(--ff-blue)" decimals={false} gap={5} />
+        </div>}
       </div>
       <div style={{ padding: '0 16px 16px' }}>
-        <button onClick={e => { e.stopPropagation(); onOpen(); }} className="chamfer-sm focus-lime" style={{ width: '100%', height: 44, border: 'none', background: 'var(--ff-blue)', color: '#fff', fontWeight: 700, fontSize: 13.5, letterSpacing: '0.04em', transition: 'background .15s' }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--ff-blue-deep)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--ff-blue)'}>{cta}</button>
+        <button onClick={handlePrimary} className="chamfer-sm focus-lime" style={{ width: '100%', height: 44, border: 'none', background: 'var(--ff-blue)', color: '#fff', fontWeight: 700, fontSize: 13.5, letterSpacing: '0.04em', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--ff-blue-deep)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--ff-blue)'}>{isMaterial && <Icon name="cart" size={15} />}{cta}</button>
       </div>
     </article>
   );
 }
 
-Object.assign(window, { Riyal, SAR, SAR2, Price, Stars, CornerBadge, Thumb, PublicHeader, PublicFooter, FFMarkLime, SubBanner, NAV_LINKS, CardTag, ListingCard });
+/* ---------------- Category tiles (marketplace home) ---------------- */
+function CategoryTiles({ go }) {
+  const meta = window.KIND_META, order = window.KIND_ORDER || ['job', 'space', 'equipment', 'material'];
+  return (
+    <section style={{ background: 'var(--surface)', padding: '40px 0 8px' }}>
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 28px' }}>
+        <div className="cat-tiles-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+          {order.map(k => {
+            const m = meta[k];
+            return (
+              <button key={k} onClick={() => go({ name: 'browse', kind: k })}
+                className="chamfer focus-lime"
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ff-blue)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+                style={{ background: 'var(--surface)', border: '1px solid var(--line)', padding: '20px 20px', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', cursor: 'pointer', transition: 'border-color .15s, box-shadow .18s, transform .18s' }}>
+                <span className="chamfer-sm" style={{ width: 46, height: 46, flexShrink: 0, background: 'var(--ff-fog)', color: 'var(--ff-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={m.icon} size={24} />
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, letterSpacing: '-0.01em' }}>{m.label}</span>
+                  <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ink-3)', marginTop: 2 }}>{m.blurb}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Trust & safety band ---------------- */
+function TrustBand() {
+  const items = [
+    { icon: 'check', title: 'Verified vendors', sub: 'Every shop ID-checked & rated' },
+    { icon: 'wallet', title: 'Secure checkout', sub: 'Protected payments, escrow on quotes' },
+    { icon: 'star', title: 'Certified quality', sub: 'ESD, ISO & material certs on file' },
+    { icon: 'phone', title: 'Local support', sub: 'KSA-based team, 7 days a week' },
+  ];
+  return (
+    <section style={{ background: 'var(--surface)', padding: '20px 0 48px' }}>
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 28px' }}>
+        <div className="chamfer trust-band-grid" style={{ background: 'var(--ff-fog)', border: '1px solid var(--line)', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
+          {items.map((it, i) => (
+            <div key={it.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 13, padding: '22px 24px', borderLeft: i > 0 ? '1px solid var(--line)' : 'none' }}>
+              <span className="chamfer-sm" style={{ width: 38, height: 38, flexShrink: 0, background: 'var(--ff-blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name={it.icon} size={19} stroke={2.4} />
+              </span>
+              <span>
+                <span style={{ display: 'block', fontWeight: 700, fontSize: 14 }}>{it.title}</span>
+                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ink-3)', marginTop: 2, lineHeight: 1.4 }}>{it.sub}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Cross-sell rail (related listings on detail pages) ---------------- */
+function RelatedRail({ title, items, go, onAdd }) {
+  if (!items || !items.length) return null;
+  const add = onAdd || ((m) => window.__ffAddToCart && window.__ffAddToCart(m));
+  const routeFor = (it) => (window.KIND_META[it.kind] && window.KIND_META[it.kind].route) || 'detail';
+  return (
+    <section style={{ marginTop: 44 }}>
+      <h2 style={{ margin: '0 0 16px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em' }}>{title}</h2>
+      <div className="results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, alignItems: 'stretch' }}>
+        {items.map(it => <ListingCard key={it.id} item={it} onOpen={() => go({ name: routeFor(it), id: it.id, kind: it.kind })} onAdd={add} />)}
+      </div>
+    </section>
+  );
+}
+
+Object.assign(window, { Riyal, SAR, SAR2, Price, Stars, CornerBadge, Thumb, PublicHeader, PublicFooter, FFMarkLime, SubBanner, NAV_LINKS, CardTag, ListingCard, CategoryTiles, TrustBand, RelatedRail });

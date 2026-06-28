@@ -84,7 +84,7 @@ function AccessPass({ bk }) {
       <div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.1)', padding: '5px 14px', borderRadius: 20, marginBottom: 16 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--ff-lime)', display: 'inline-block', flexShrink: 0 }} />
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>ACCESS PASS</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>{bk.rental ? 'RENTAL' : 'ACCESS PASS'}</span>
         </div>
         <h2 className="access-pass-title" style={{ margin: '0 0 22px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 46, letterSpacing: '-0.03em', lineHeight: 1 }}>{bk.space}</h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 36px' }}>
@@ -104,7 +104,7 @@ function AccessPass({ bk }) {
         <div style={{ background: 'var(--ff-blue)', padding: 10, borderRadius: 3 }}>
           <QRMark size={82} />
         </div>
-        <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em', fontWeight: 600 }}>Scan at reception</div>
+        <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em', fontWeight: 600 }}>{bk.rental ? 'Show on pickup' : 'Scan at reception'}</div>
       </div>
     </div>
   );
@@ -209,7 +209,7 @@ function BookingsList({ onSelect }) {
   const toneMap = { confirmed: 'navy', upcoming: 'blue', completed: 'gray' };
   return (
     <div>
-      <h2 style={{ margin: '0 0 22px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>My Bookings</h2>
+      <h2 style={{ margin: '0 0 22px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>My Bookings &amp; Rentals</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {MOCK_BOOKINGS.map(bk => (
           <button key={bk.id} onClick={() => onSelect(bk)}

@@ -103,7 +103,7 @@ function OrderDetail({ order, onBack }) {
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.1)', padding: '5px 14px', borderRadius: 20, marginBottom: 16 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--ff-lime)', flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>SERVICE ORDER</span>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>{({ materials: 'MATERIALS ORDER', rental: 'EQUIPMENT RENTAL' }[order.type]) || 'SERVICE ORDER'}</span>
               </div>
               <h2 style={{ margin: '0 0 8px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{order.service}</h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 30px', marginTop: 16 }}>
@@ -138,6 +138,7 @@ function OrderDetail({ order, onBack }) {
           </div>
 
           {/* files */}
+          {order.files && order.files.length > 0 && (
           <div className="chamfer" style={{ background: 'var(--surface)', border: '1px solid var(--line)', padding: '20px 24px' }}>
             <h3 style={{ margin: '0 0 14px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', color: 'var(--ff-blue)' }}>ATTACHED FILES</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -145,17 +146,20 @@ function OrderDetail({ order, onBack }) {
                 <div key={f} className="chamfer-sm" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--bg)', border: '1px solid var(--line)' }}>
                   <Icon name="file" size={18} style={{ color: 'var(--ff-blue)', flexShrink: 0 }} />
                   <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500 }}>{f}</span>
-                  <Button kind="ghost" size="sm" icon="download" onClick={() => useToast && toast(f + ' download started')}>Download</Button>
+                  <Button kind="ghost" size="sm" icon="download" onClick={() => toast(f + ' download started')}>Download</Button>
                 </div>
               ))}
             </div>
           </div>
+          )}
 
           {/* messages */}
+          {order.messages && order.messages.length > 0 && (
           <div className="chamfer" style={{ background: 'var(--surface)', border: '1px solid var(--line)', padding: '20px 24px' }}>
             <h3 style={{ margin: '0 0 18px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', color: 'var(--ff-blue)' }}>MESSAGES</h3>
             <MessagesThread messages={order.messages} />
           </div>
+          )}
         </div>
 
         {/* right rail */}

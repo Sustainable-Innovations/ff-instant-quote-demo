@@ -67,11 +67,12 @@ function FilterRail({ kind, setKind, onClear }) {
         </FilterGroup>
         <FilterGroup label="Category" open>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
-            <RadioRow label="Jobs" checked={kind === 'job'} onClick={() => setKind('job')} />
-            <RadioRow label="Spaces" checked={kind === 'space'} onClick={() => setKind('space')} />
+            {(window.KIND_ORDER || ['job', 'space', 'equipment', 'material']).map(k => (
+              <RadioRow key={k} label={window.KIND_META[k].label} checked={kind === k} onClick={() => setKind(k)} />
+            ))}
           </div>
           <div style={{ height: 1, background: 'var(--line)', margin: '4px 0 8px' }} />
-          {window.FILTER_TREE.map(n => <TreeNode key={n.label} node={n} />)}
+          {((window.FILTER_TREES && window.FILTER_TREES[kind]) || window.FILTER_TREE).map(n => <TreeNode key={kind + n.label} node={n} />)}
         </FilterGroup>
         <FilterGroup label="Location">
           {window.LOCATIONS.map(l => <CheckRow key={l} label={l} checked={loc.includes(l)} onClick={() => toggle(loc, setLoc, l)} />)}
@@ -125,9 +126,10 @@ function MiniPromo() {
   );
 }
 
-function BrowsePage({ route, go, query }) {
+function BrowsePage({ route, go, query, onAddToCart }) {
   const [kind, setKind] = usePBrowse(route.kind || 'job');
-  const all = kind === 'job' ? window.JOBS : window.SPACES;
+  const meta = window.KIND_META[kind];
+  const all = window[meta.source] || [];
   const q = (query || '').trim().toLowerCase();
   const items = q ? all.filter(i => (i.title + i.vendor + i.tags.join(' ')).toLowerCase().includes(q)) : all;
   return (
@@ -136,14 +138,14 @@ function BrowsePage({ route, go, query }) {
         <FilterRail kind={kind} setKind={setKind} />
         <div style={{ minWidth: 0 }}>
           <MiniPromo />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-            <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, letterSpacing: '-0.025em' }}>Results <span style={{ fontSize: 16, color: 'var(--ink-3)', fontWeight: 500 }}>· {items.length} {kind === 'job' ? 'jobs' : 'spaces'}</span></h1>
-            <Button kind="accent" size="lg" icon="send" onClick={() => go({ name: 'browse', kind })} style={{ fontWeight: 700, letterSpacing: '0.04em' }}>BID YOUR JOB</Button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22, gap: 12, flexWrap: 'wrap' }}>
+            <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, letterSpacing: '-0.025em' }}>{meta.label} <span style={{ fontSize: 16, color: 'var(--ink-3)', fontWeight: 500 }}>· {items.length} {meta.plural}</span></h1>
+            {kind === 'job' && <Button kind="accent" size="lg" icon="send" onClick={() => go({ name: 'browse', kind })} style={{ fontWeight: 700, letterSpacing: '0.04em' }}>BID YOUR JOB</Button>}
           </div>
           {items.length === 0
             ? <div className="chamfer" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}><Empty icon="search" title="No matches" sub="Try a different search or clear filters." /></div>
             : <div className="results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 22, alignItems: 'stretch' }}>
-                {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: it.kind === 'job' ? 'job' : 'detail', id: it.id, kind: it.kind })} />)}
+                {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: meta.route, id: it.id, kind: it.kind })} onAdd={onAddToCart} />)}
               </div>}
           <div style={{ padding: '52px 0 8px' }}><SubBanner go={go} /></div>
         </div>

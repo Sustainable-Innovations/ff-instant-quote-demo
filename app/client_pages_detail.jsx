@@ -428,6 +428,7 @@ function SpaceDetailPage({ route, go, authed, requireAuth }) {
           <BookingGate authed={authed} onStart={startBooking} />
         )}
       </div>
+      <RelatedRail title="Pairs well with equipment" items={(window.EQUIPMENT || []).slice(0, 4)} go={go} />
     </div>
   );
 }

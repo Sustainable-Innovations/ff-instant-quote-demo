@@ -1,0 +1,30 @@
+{
+  "supplier": "default",
+  "version": "v1",
+  "process": "pcb",
+  "_note": "PCB fabrication coefficient set (no PCBA). SAR. Mirrors the as-built engine rates.",
+  "currency": "SAR",
+  "layer": {
+    "1": { "setup": 80,  "board": 2.0, "area": 0.18 },
+    "2": { "setup": 100, "board": 2.5, "area": 0.22 },
+    "4": { "setup": 220, "board": 5.0, "area": 0.45 },
+    "6": { "setup": 380, "board": 8.0, "area": 0.70 }
+  },
+  "qty": { "5": 1.0, "10": 0.85, "25": 0.7, "50": 0.58, "100": 0.48, "200": 0.4 },
+  "finish": { "HASL (lead-free)": 0, "ENIG": 0.35, "OSP": 0.08 },
+  "copper": { "1 oz": 0, "2 oz": 0.15, "3 oz": 0.4 },
+  "mask": { "Green": 0, "Red": 0.4, "Yellow": 0.4, "Blue": 0.4, "White": 0.6, "Black": 0.6, "Purple": 0.9 },
+  "thick": { "0.6": 0.3, "0.8": 0.2, "1.0": 0.1, "1.2": 0.05, "1.6": 0, "2.0": 0.3 },
+  "feat": { "6/6 mil": 0, "5/5 mil": 0.3, "4/4 mil": 0.8, "3.5/3.5 mil": 1.6 },
+  "via": { "Tented": 0, "Untented": 0, "Plugged": 0.5, "POFV": 1.2 },
+  "goldFingers": 1.2,
+  "drillRate": 0.0008,
+  "testFee": 40,
+  "platformPct": 12,
+  "lead": { "Standard · 5-7 days": 1.0, "Batch · 48 h": 1.25, "Express · 24 h": 1.6 },
+  "leadDays": { "Standard · 5-7 days": 6, "Batch · 48 h": 2, "Express · 24 h": 1 },
+  "review": {
+    "parserConfidenceFloor": 0.6,
+    "maxAreaCm2": 2500
+  }
+}

@@ -454,11 +454,21 @@ function JobDetailPage({ item, go, requireAuth }) {
   const hasQuote = !!(jd && jd.quote);
   const crumb = (jd && jd.crumb) || ['Home', 'Jobs', item.cat, item.title];
   const summary = (jd && jd.summary) || item.blurb;
-  const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html' };
+  const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html', 'laser': '../engines/quote-laser/index.html' };
   const engineKey = (jd && jd.quoteEngine) || '3d';
   const quoteUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
-  const quoteVersion = 'c733ed2';
+  const quoteVersion = 'p0j-20260629';
   const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (jd && jd.quoteProcess ? '&process=' + jd.quoteProcess : '');
+  // Engines report content height (ffQuoteHeight; ffPcbHeight alias) so the iframe never clips.
+  const [engineH, setEngineH] = usePDet(engineKey === 'pcb' ? 1180 : 820);
+  useEffDet(() => {
+    const onMsg = (e) => {
+      if (!e.data || !e.data.height) return;
+      if (e.data.type === 'ffQuoteHeight' || e.data.type === 'ffPcbHeight') setEngineH(Math.max(560, Math.min(3000, e.data.height)));
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [engineKey]);
   const badgeTone = item.badge && ({ lime: ['var(--ff-lime)', 'var(--ff-navy)'], blue: ['rgba(1,53,244,0.10)', 'var(--ff-blue)'], red: ['var(--neg-bg)', 'var(--neg)'] }[item.badge.t] || ['var(--ff-fog)', 'var(--ink-2)']);
   const scrollToQuote = () => quoteRef.current && window.scrollTo({ top: quoteRef.current.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
 
@@ -518,7 +528,7 @@ function JobDetailPage({ item, go, requireAuth }) {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--ff-lime)' }} />
               <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink-2)' }}>FF Instant-Quote Engine · Live</span>
             </div>
-            <iframe src={embedUrl} title="FlexFactory Instant Quote" loading="lazy" style={{ width: '100%', height: 820, border: 0, display: 'block' }} />
+            <iframe src={embedUrl} title="FlexFactory Instant Quote" loading="lazy" style={{ width: '100%', height: engineH, border: 0, display: 'block' }} />
           </div>
           <p style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 12, lineHeight: 1.5 }}>Prices are indicative, generated in your browser from the uploaded geometry. {item.vendor} confirms a firm quote — covering manufacturability, finish and tolerances — before anything is charged.</p>
         </section>

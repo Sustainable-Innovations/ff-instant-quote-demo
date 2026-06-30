@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flex Factory — Instant Quote</title>
-<meta name="description" content="Upload an STL or STEP file and get an instant, indicative manufacturing quote — FDM, SLA, SLS 3D printing and CNC machining. Geometry is analysed entirely in your browser.">
+<meta name="description" content="Upload an STL or STEP file and get an instant, indicative 3D-printing quote — FDM, SLA and SLS. Geometry is analysed entirely in your browser.">
 <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Flex Factory — Instant Quote">
@@ -127,6 +127,13 @@
     padding: 14px 20px; border-bottom: 1px solid var(--divider);
   }
   #settings-pane .settings-body { padding: 20px; }
+
+  /* Cost-model formula block at the top of Settings */
+  .cost-model { max-width: 1100px; background: var(--bg-elev); border: 1px solid var(--divider); margin-bottom: 20px; }
+  .cost-model > h3 { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); padding: 14px 20px; border-bottom: 1px solid var(--divider); }
+  .cost-model .eqs { margin: 0; padding: 16px 20px; font-family: 'Courier New', monospace; font-size: 12.5px; line-height: 1.85; color: var(--text); white-space: pre-wrap; overflow-x: auto; }
+  .cost-model .eqs .eqhead { color: var(--accent); font-weight: 700; }
+  .cost-model .legend { padding: 0 20px 18px; font-size: 11.5px; color: var(--muted); line-height: 1.7; }
 
   .settings-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -362,6 +369,12 @@
     margin-top: 14px; font-size: 11px; color: rgba(255,255,255,0.7);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; letter-spacing: 0.3px;
   }
+  .quote-hero .review-badge {
+    display: inline-block; margin-bottom: 10px; padding: 4px 10px; border-radius: 999px;
+    background: rgba(255,193,7,0.18); color: #ffd34d; border: 1px solid rgba(255,193,7,0.45);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
+    letter-spacing: 0.3px; font-weight: 600;
+  }
 
   .breakdown { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; }
   .breakdown .row { display: flex; justify-content: space-between; padding: 5px 0; color: var(--muted); }
@@ -581,6 +594,7 @@
 
     <div class="tab-panel active" id="tab-ff">
     <div class="quote-hero" id="quote-hero" style="display:none;">
+      <div class="review-badge" id="review-badge" style="display:none;">⚠ Estimate — pending review</div>
       <div class="total mono" id="total-price">—</div>
       <div class="unit" id="unit-price">—</div>
       <div class="disclaimer">Indicative — final quote from matched supplier</div>
@@ -700,23 +714,31 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 
+// --- FlexFactory portable core (Phase 0) ---
+import { computeAMQuote } from './quote.kernel.js';
+import { surrogateTimeModel } from './slicer/fallback.estimate.js';
+import { loadCoefficients, readEngineConfig } from '../core/coefficients.js';
+import { createCapture, quoteGeneratedEvent, debounce } from '../core/capture.js';
+import { ry as ryGlyph, fmtPrice as fmtPriceCore, fmtPriceText as fmtPriceTextCore } from '../core/util/units.js';
+
 // ---------- Pricing data (SAR; 1 USD ≈ 3.75 SAR) ----------
 const DEFAULTS = {
+  // NOTE: mirrors engines/coefficients/fdm.default.json (the canonical externalized copy
+  // + ?coeffs= override target + snapshot-test fixture). Keep the two in sync.
   general: {
     currency: 'SAR',
-    qtyTiers: [
-      { minQty: 1,   multiplier: 1.00 },
-      { minQty: 10,  multiplier: 0.85 },
-      { minQty: 50,  multiplier: 0.75 },
-      { minQty: 100, multiplier: 0.65 }
-    ],
-    leadMultipliers: { standard: 1.00, express: 1.40 }
+    parserConfidenceFloor: 0.6,
+    // Canonical pricing (docs/pricing-rationalization.md): NO blanket qty discount — variable
+    // cost is flat per unit; only setup amortizes (setup/qty). minOrder floors the order;
+    // learningRate (<1) applies a Wright curve to post-processing labor (1.0 = neutral).
+    leadMultipliers: { standard: 1.00, express: 1.40 },
+    leadDays: { standard: 7, express: 3 },
+    minOrder: 20.0,
+    learningRate: 1.0
   },
-  // density = g/cm³ (physical); pricePerG = effective billed material cost in SAR/g.
-  // For FDM/SLA/SLS this is ~2× retail spool/resin/powder cost to cover supports,
-  // purge, failed builds and (for SLS) un-sintered powder refresh. For CNC metals it is
-  // the billet stock cost loaded ~2.5× for the material machined away (we bill on part
-  // weight, not stock weight). Approx $/kg shown = pricePerG × 1000 ÷ 3.75.
+  // density = g/cm³ (physical); pricePerG = effective billed material cost in SAR/g
+  // (~2× retail spool/resin/powder cost to cover supports, purge, failed builds and
+  // (for SLS) un-sintered powder refresh). Approx $/kg shown = pricePerG × 1000 ÷ 3.75.
   materials: {
     pla:         { name: 'PLA',            density: 1.24, pricePerG: 0.17,  processes: ['fdm'] }, // ~$45/kg
     petg:        { name: 'PETG',           density: 1.27, pricePerG: 0.20,  processes: ['fdm'] }, // ~$53/kg
@@ -726,15 +748,13 @@ const DEFAULTS = {
     nylon_fdm:   { name: 'Nylon 12 (FDM)', density: 1.01, pricePerG: 0.40,  processes: ['fdm'] }, // ~$107/kg
     nylon_sls:   { name: 'Nylon 12 (SLS)', density: 1.01, pricePerG: 0.68,  processes: ['sls'] }, // ~$181/kg (powder + refresh waste)
     resin_std:   { name: 'Standard resin', density: 1.15, pricePerG: 0.35,  processes: ['sla'] }, // ~$93/kg
-    resin_tough: { name: 'Tough resin',    density: 1.18, pricePerG: 0.60,  processes: ['sla'] }, // ~$160/kg
-    alu:         { name: 'Aluminium 6061', density: 2.70, pricePerG: 0.08,  processes: ['cnc'] }, // ~$21/kg
-    steel_mild:  { name: 'Mild steel',     density: 7.85, pricePerG: 0.05,  processes: ['cnc'] }, // ~$13/kg
-    steel_ss304: { name: 'Stainless 304',  density: 8.00, pricePerG: 0.12,  processes: ['cnc'] }, // ~$32/kg
-    brass:       { name: 'Brass',          density: 8.50, pricePerG: 0.13,  processes: ['cnc'] }  // ~$35/kg
+    resin_tough: { name: 'Tough resin',    density: 1.18, pricePerG: 0.60,  processes: ['sla'] }  // ~$160/kg
   },
   processes: {
     fdm: {
-      name: 'FDM 3D Printing', hourlyRate: 15.00, setupFee: 13.00, complexity: 1.10, mmPerHour: 18000,
+      name: 'FDM 3D Printing', hourlyRate: 15.00, setupFee: 13.00, complexity: 1.00, overheadPct: 0, marginPct: 10, mmPerHour: 18000,
+      envelope: { x: 300, y: 300, z: 300 },
+      build: { volumetricFlow_mm3ps: 8, layerOverheadSec: 6, supportFraction: 0.12, postProcPerUnit: 2.0 },
       params: {
         infill:       { label: 'Infill',       unit: '%',  min: 10,    max: 100,  step: 5,     default: 20 },
         layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.10,  max: 0.40, step: 0.05,  default: 0.20 }
@@ -742,33 +762,22 @@ const DEFAULTS = {
       baseLayerHeight: 0.20 // reference layer height used in time scaling
     },
     sla: {
-      name: 'SLA 3D Printing', hourlyRate: 28.00, setupFee: 22.50, complexity: 1.25, mmPerHour: 9000,
+      name: 'SLA 3D Printing', hourlyRate: 28.00, setupFee: 22.50, complexity: 1.00, overheadPct: 0, marginPct: 25, mmPerHour: 9000,
+      envelope: { x: 200, y: 200, z: 250 },
+      build: { volumetricFlow_mm3ps: 40, layerOverheadSec: 7, supportFraction: 0.15, postProcPerUnit: 3.0 },
       params: {
         layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.025, max: 0.10, step: 0.005, default: 0.050 }
       },
       baseLayerHeight: 0.05
     },
     sls: {
-      name: 'SLS 3D Printing', hourlyRate: 45.00, setupFee: 56.00, complexity: 1.20, mmPerHour: 11000,
+      name: 'SLS 3D Printing', hourlyRate: 45.00, setupFee: 56.00, complexity: 1.00, overheadPct: 0, marginPct: 20, mmPerHour: 11000,
+      envelope: { x: 200, y: 200, z: 330 },
+      build: { volumetricFlow_mm3ps: 25, layerOverheadSec: 5, supportFraction: 0.0, postProcPerUnit: 2.5 },
       params: {
         layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.08, max: 0.20, step: 0.01,   default: 0.12 }
       },
       baseLayerHeight: 0.12
-    },
-    cnc: {
-      name: 'CNC Machining',   hourlyRate: 142.00, setupFee: 169.00, complexity: 1.60, mmPerHour: 45000,
-      params: {
-        tolerance:    { label: 'Tolerance',     type: 'select', options: [
-          { value: 'standard', label: 'Standard ±0.1 mm',  multiplier: 1.00 },
-          { value: 'tight',    label: 'Tight ±0.05 mm',    multiplier: 1.25 },
-          { value: 'ultra',    label: 'Ultra-tight ±0.02 mm', multiplier: 1.60 }
-        ], default: 'standard' },
-        finish:       { label: 'Surface finish', type: 'select', options: [
-          { value: 'machined', label: 'As-machined',     multiplier: 1.00 },
-          { value: 'blasted',  label: 'Bead-blasted',    multiplier: 1.10 },
-          { value: 'anodised', label: 'Anodised / coated', multiplier: 1.25 }
-        ], default: 'machined' }
-      }
     }
   }
 };
@@ -777,7 +786,7 @@ const DEFAULTS = {
 const deepClone = (o) => JSON.parse(JSON.stringify(o));
 
 // ---------- Persisted state ----------
-const STORAGE_KEY = 'ff_instant_quote_settings_v1';
+const STORAGE_KEY = 'ff_instant_quote_settings_v2'; // v2: canonical pricing (margin/minOrder; no qtyTiers/complexity-markup)
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -815,18 +824,13 @@ let state = loadSettings();
 const MATERIALS = new Proxy({}, { get: (_, k) => state.materials[k], ownKeys: () => Object.keys(state.materials), getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) });
 const PROCESSES = new Proxy({}, { get: (_, k) => state.processes[k], ownKeys: () => Object.keys(state.processes), getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) });
 
-function quantityDiscount(qty) {
-  const tiers = [...state.general.qtyTiers].sort((a, b) => b.minQty - a.minQty);
-  for (const t of tiers) if (qty >= t.minQty) return t.multiplier;
-  return 1.0;
-}
+// (Blanket quantity-discount removed — see docs/pricing-rationalization.md. Quantity
+// economy now comes only from setup amortization in the kernel, not a multiplier.)
 
-const _numFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-// New Saudi Riyal symbol drawn as inline SVG (matches the marketplace glyph; renders in any font)
-const RY_PATHS = '<path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/>';
-const ry = (em) => `<svg viewBox="0 0 1124.14 1256.39" style="height:${em}em;width:auto;display:inline-block;vertical-align:-0.08em;margin-right:.14em" fill="currentColor" aria-hidden="true">${RY_PATHS}</svg>`;
-function fmtPrice(n) { return ry(0.82) + _numFmt.format(n); }                       // HTML — assign via innerHTML
-function fmtPriceText(n) { return `${state.general.currency} ${_numFmt.format(n)}`; } // plain text — for email/aria
+// Currency formatting now lives in engines/core/util/units.js (single source of truth).
+const ry = (em) => ryGlyph(em);
+function fmtPrice(n) { return fmtPriceCore(n); }                       // HTML — assign via innerHTML
+function fmtPriceText(n) { return fmtPriceTextCore(n, state.general.currency); } // plain text — for email/aria
 let lastTotal = 0;
 
 // ---------- Three.js setup ----------
@@ -971,6 +975,7 @@ const ui = {
 
   emptySide: document.getElementById('empty-side'),
   quoteHero: document.getElementById('quote-hero'),
+  reviewBadge: document.getElementById('review-badge'),
   readoutSection: document.getElementById('readout-section'),
   configSection: document.getElementById('config-section'),
   breakdownSection: document.getElementById('breakdown-section'),
@@ -1012,6 +1017,22 @@ const ui = {
 let currentAnalysis = null;   // geometry scaled to the selected source unit
 let baseAnalysis = null;      // geometry as parsed (coordinates assumed to be in mm)
 let currentFilename = null;
+let currentFileMeta = null;       // {name, type, bytes} for capture
+let currentParserConfidence = 1;  // 1 for STL; lower for STEP tessellation
+let lastResult = null;            // last QuoteResult from the kernel
+
+// --- Phase 0: engine config (?embed / ?coeffs / ?capture / ?process), capture client ---
+const engineCfg = readEngineConfig();
+const capture = createCapture({
+  transport: engineCfg.captureMode || 'localStorage',
+  context: { engine: '3d', supplierId: 'default' },
+});
+const emitQuoteGenerated = debounce((result) => {
+  capture.emit('quote_generated', quoteGeneratedEvent(result, {
+    fileMeta: currentFileMeta,
+    parserConfidence: currentParserConfidence,
+  }));
+}, 500);
 
 // Source-file unit → millimetres. STL/STEP carry no reliable unit, so we let the user
 // declare it; getting this wrong scales the quote by the cube of the factor.
@@ -1022,8 +1043,7 @@ const UNIT_TO_MM = { mm: 1, cm: 10, in: 25.4 };
 const PROCESS_ENVELOPES = {
   fdm: [300, 300, 300],
   sla: [200, 200, 250],
-  sls: [200, 200, 330],
-  cnc: [500, 400, 300]
+  sls: [200, 200, 330]
 };
 
 // Re-derive the displayed/quoted geometry from the parsed mm-geometry for the chosen unit.
@@ -1061,9 +1081,27 @@ function populateMaterials() {
   });
 }
 populateProcesses();
+// Honor ?process= from the marketplace embed (quoteProcess) when valid.
+if (engineCfg.process && state.processes[engineCfg.process]) ui.fProcess.value = engineCfg.process;
 populateMaterials();
 // renderProcessParams is defined below; call after DOM ready via timeout to keep source order readable
 setTimeout(() => renderProcessParams(), 0);
+
+// Externalized coefficients: apply a supplier set injected via ?coeffs=<url> (Phase-4 host seam).
+// Default behaviour is unchanged — the bundled engines/coefficients/fdm.default.json mirrors the
+// inline defaults below, so without ?coeffs= prices are identical.
+if (engineCfg.coeffsUrl) {
+  loadCoefficients('fdm', { coeffsUrl: engineCfg.coeffsUrl, defaults: deepClone(DEFAULTS) })
+    .then((c) => {
+      if (c.general) state.general = c.general;
+      if (c.materials) state.materials = c.materials;
+      if (c.processes) state.processes = c.processes;
+      populateMaterials();
+      renderProcessParams();
+      if (currentAnalysis) updateQuote();
+    })
+    .catch(() => {});
+}
 
 // ---------- Drop zone interactions ----------
 function showError(msg) {
@@ -1118,6 +1156,7 @@ function handleFile(file) {
     return;
   }
   currentFilename = file.name;
+  currentFileMeta = { name: file.name, type: getExt(file.name), bytes: file.size };
 
   ui.statusChip.textContent = '● LOADING';
   ui.loadingPane.classList.remove('hidden');
@@ -1245,6 +1284,8 @@ function finishGeometry(geometry, sourceLabel) {
     resetToUpload();
     return;
   }
+  // STL meshes are exact triangle soup; STEP is tessellated from B-rep → slightly less certain.
+  currentParserConfidence = sourceLabel === 'STEP' ? 0.8 : 0.95;
   ui.loadingText.textContent = 'Computing volume…';
   setTimeout(() => {
     baseAnalysis = analyzeGeometry(geometry);
@@ -1360,70 +1401,61 @@ function updateQuote() {
   const material = MATERIALS[ui.fMaterial.value];
   if (!material || !process) return;
 
-  const qty = Math.max(1, Math.min(500, parseInt(ui.fQty.value) || 1));
-  const lead = getLead();
-  const leadMult = state.general.leadMultipliers[lead] ?? 1.0;
-  const params = getProcessParamValues(processKey);
+  // Pricing math now lives in the portable kernel (engines/quote-3d/quote.kernel.js);
+  // this view only gathers selections and renders the returned QuoteResult.
+  const sel = {
+    process: processKey,
+    material: ui.fMaterial.value,
+    qty: ui.fQty.value,
+    lead: getLead(),
+    params: getProcessParamValues(processKey),
+  };
+  // Phase 1: polymer AM (FDM/SLA/SLS) uses the layer-aware build-time surrogate.
+  // (A process without a build block falls back to the legacy throughput model.)
+  const result = computeAMQuote(a, sel, state, {
+    parserConfidence: currentParserConfidence,
+    timeModel: surrogateTimeModel,
+  });
+  lastResult = result;
+  lastTotal = result.price;
 
-  // Material-usage factor and time-scale factor per process
-  let materialFactor = 1.0;
-  let timeScale = 1.0;
-  let toleranceMult = 1.0;
-  let finishMult = 1.0;
-  const modifiers = [];
+  const c = result.components;
+  const f = result.factors;
+  const qty = result.quantity;
+  const lead = sel.lead;
 
-  if (processKey === 'fdm') {
-    const infillPct = params.infill ?? 20;
-    materialFactor = 0.15 + 0.85 * (infillPct / 100); // shell baseline + infill
-    const lh = params.layerHeight ?? process.baseLayerHeight;
-    timeScale = process.baseLayerHeight / lh;
-    modifiers.push({ label: `Infill (${infillPct}%)`, value: `×${materialFactor.toFixed(2)} mat.` });
-    modifiers.push({ label: `Layer height (${lh.toFixed(2)} mm)`, value: `×${timeScale.toFixed(2)} time` });
-  } else if (processKey === 'sla' || processKey === 'sls') {
-    const lh = params.layerHeight ?? process.baseLayerHeight;
-    timeScale = process.baseLayerHeight / lh;
-    modifiers.push({ label: `Layer height (${lh.toFixed(3)} mm)`, value: `×${timeScale.toFixed(2)} time` });
-  } else if (processKey === 'cnc') {
-    const tolOpt = process.params.tolerance.options.find(o => o.value === params.tolerance);
-    const finOpt = process.params.finish.options.find(o => o.value === params.finish);
-    toleranceMult = tolOpt ? tolOpt.multiplier : 1.0;
-    finishMult    = finOpt ? finOpt.multiplier : 1.0;
-    if (tolOpt) modifiers.push({ label: `Tolerance (${tolOpt.label})`, value: `×${toleranceMult.toFixed(2)}` });
-    if (finOpt) modifiers.push({ label: `Finish (${finOpt.label})`, value: `×${finishMult.toFixed(2)}` });
-  }
+  ui.rWeight.textContent = `${c.weight_g.toFixed(1)} g · ${material.name}`;
+  ui.totalPrice.innerHTML = fmtPrice(result.price);
+  ui.unitPrice.innerHTML = `${fmtPrice(result.unitPrice)} / unit × ${qty} · ${lead === 'express' ? 'Express' : 'Standard'} lead`;
 
-  const vol_cm3 = a.volume_mm3 / 1000;
-  const weight_g = vol_cm3 * material.density * materialFactor;
-  const materialCost = weight_g * material.pricePerG;
-  const est_hours = (a.volume_mm3 / process.mmPerHour) * timeScale;
-  const machineCost = est_hours * process.hourlyRate;
-  const setupFee = process.setupFee;                 // one-time per order (CAM / slicing / fixturing)
-  const setupPerUnit = setupFee / qty;               // amortised across the batch, not charged per part
-  const subtotal = (materialCost + machineCost + setupPerUnit) * process.complexity * toleranceMult * finishMult;
-  const qtyDisc = quantityDiscount(qty);
-  const unitPrice = subtotal * qtyDisc * leadMult;
-  const total = unitPrice * qty;
-
-  ui.rWeight.textContent = `${weight_g.toFixed(1)} g · ${material.name}`;
-
-  lastTotal = total;
-  ui.totalPrice.innerHTML = fmtPrice(total);
-  ui.unitPrice.innerHTML = `${fmtPrice(unitPrice)} / unit × ${qty} · ${lead === 'express' ? 'Express' : 'Standard'} lead`;
-
-  const modifierRows = modifiers.map(m =>
+  const modifierRows = (c.modifiers || []).map(m =>
     `<div class="row"><span>${m.label}</span><span>${m.value}</span></div>`
   ).join('');
+  // Phase-1 rows appear only when the build-time surrogate supplied them (FDM/SLA support, post-proc).
+  const supportRow = c.supportCost > 0
+    ? `<div class="row"><span>Support material (${c.supportGrams.toFixed(1)} g)</span><span>${fmtPrice(c.supportCost)}</span></div>` : '';
+  const postProcRow = c.postProcPerUnit > 0
+    ? `<div class="row"><span>Post-processing</span><span>${fmtPrice(c.postProcPerUnit)}</span></div>` : '';
+  const machineNote = c.layerCount ? `${(c.est_hours*60).toFixed(0)} min · ${c.layerCount} layers @ ${fmtPrice(process.hourlyRate)}/h` : `${(c.est_hours*60).toFixed(0)} min @ ${fmtPrice(process.hourlyRate)}/h`;
 
   ui.breakdown.innerHTML = `
-    <div class="row"><span>Material (${material.name})</span><span>${fmtPrice(materialCost)}</span></div>
-    <div class="row"><span>Machine time (${(est_hours*60).toFixed(0)} min @ ${fmtPrice(process.hourlyRate)}/h)</span><span>${fmtPrice(machineCost)}</span></div>
-    <div class="row"><span>Setup fee${qty > 1 ? ` (${fmtPrice(setupFee)} ÷ ${qty})` : ''}</span><span>${fmtPrice(setupPerUnit)}</span></div>
-    <div class="row"><span>Complexity factor</span><span>×${process.complexity.toFixed(2)}</span></div>
+    <div class="row"><span>Material (${material.name})</span><span>${fmtPrice(c.materialCost)}</span></div>
+    ${supportRow}
+    <div class="row"><span>Machine time (${machineNote})</span><span>${fmtPrice(c.machineCost)}</span></div>
+    <div class="row"><span>Setup fee${qty > 1 ? ` (${fmtPrice(c.setupFee)} ÷ ${qty})` : ''}</span><span>${fmtPrice(c.setupPerUnit)}</span></div>
+    ${postProcRow}
+    ${f.complexity !== 1 ? `<div class="row"><span>Complexity (machine time)</span><span>×${f.complexity.toFixed(2)}</span></div>` : ''}
     ${modifierRows}
-    <div class="row"><span>Quantity discount (×${qty})</span><span>${qtyDisc < 1 ? `×${qtyDisc.toFixed(2)}` : '—'}</span></div>
-    <div class="row"><span>Lead time</span><span>${leadMult > 1 ? `×${leadMult.toFixed(2)}` : '—'}</span></div>
-    <div class="row total-row"><span>Total (${qty} unit${qty>1?'s':''})</span><span>${fmtPrice(total)}</span></div>
+    <div class="row"><span>Overhead + margin</span><span>×${((1 + (f.overheadPct||0)/100) * (1 + (f.marginPct||0)/100)).toFixed(2)}</span></div>
+    <div class="row"><span>Lead time${f.leadMult > 1 ? ' (conversion only)' : ''}</span><span>${f.leadMult > 1 ? `×${f.leadMult.toFixed(2)}` : '—'}</span></div>
+    ${f.minOrderApplied ? `<div class="row"><span>Minimum order</span><span>floor applied</span></div>` : ''}
+    <div class="row total-row"><span>Total (${qty} unit${qty>1?'s':''})</span><span>${fmtPrice(result.price)}</span></div>
   `;
+
+  // Review-gate badge + closed-loop capture + iframe height report.
+  if (ui.reviewBadge) ui.reviewBadge.style.display = result.needsReview ? 'inline-block' : 'none';
+  emitQuoteGenerated(result);
+  postHeight();
 
   // Build-volume sanity check (orientation-independent: compare sorted part dims to envelope)
   const env = PROCESS_ENVELOPES[processKey];
@@ -1645,24 +1677,16 @@ function renderSettings() {
             <label>Express lead multiplier</label>
             <input type="number" id="s-lead-exp" step="0.05" min="0.5" max="3" value="${g.leadMultipliers.express}">
           </div>
-        </div>
-        <div style="margin-top:20px;">
-          <label style="display:block;font-size:12px;color:var(--muted);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">Quantity-discount tiers</label>
-          <div class="settings-grid" id="s-qty-tiers">
-            ${g.qtyTiers.map((t, i) => `
-              <div class="field" style="display:flex;gap:8px;align-items:end;">
-                <div style="flex:1;">
-                  <label>Min qty</label>
-                  <input type="number" min="1" class="s-tier-qty" data-i="${i}" value="${t.minQty}">
-                </div>
-                <div style="flex:1;">
-                  <label>Multiplier</label>
-                  <input type="number" step="0.05" min="0.1" max="1" class="s-tier-mult" data-i="${i}" value="${t.multiplier}">
-                </div>
-              </div>
-            `).join('')}
+          <div class="field">
+            <label>Minimum order (SAR)</label>
+            <input type="number" id="s-min-order" step="1" min="0" value="${g.minOrder ?? 0}">
+          </div>
+          <div class="field">
+            <label>Learning rate (≤1, labor)</label>
+            <input type="number" id="s-learning" step="0.01" min="0.5" max="1" value="${g.learningRate ?? 1}">
           </div>
         </div>
+        <p class="src-note" style="margin-top:14px;">No blanket quantity discount: per-unit variable cost is constant; quantity economy comes only from setup amortization (setup ÷ qty) plus the optional labor learning curve. <a href="../../docs/pricing-rationalization.md" style="color:var(--accent);">Pricing model →</a></p>
       </div>
     </div>
   `;
@@ -1736,7 +1760,29 @@ function renderSettings() {
     </div>
   `;
 
-  body.innerHTML = generalHTML + processesHTML + matsHTML;
+  const costModelHTML = `
+    <div class="cost-model">
+      <h3>Cost model · how this quote is calculated</h3>
+      <pre class="eqs"><span class="eqhead">Should-cost — Layer 2 (deterministic)</span>
+  C_should = ( C_mat + C_sup + C_mach + C_setup + C_post ) · k_cx
+
+  C_mat   = m · c_g            m = (V ⁄ 1000) · ρ · ƒ_fill   [g]
+  C_sup   = m_sup · c_g        support material (FDM · SLA)
+  C_mach  = t_build · R_hr     machine occupancy
+  C_setup = S ⁄ q              one-time setup amortised over qty q
+  C_post  = p_unit             post-processing per part
+
+<span class="eqhead">Build time — Layer 1 surrogate (FDM · SLA · SLS)</span>
+  t_build = [ (V_dep + V_sup) ⁄ Q̇ + n_layer · τ_layer ] ⁄ 3600   [h]
+  n_layer = ⌈ z_bbox ⁄ h_layer ⌉ ,   V_dep = V · ƒ_fill
+  ƒ_fill  = 0.15 + 0.85 · (infill ⁄ 100)
+
+<span class="eqhead">Price — Layer 4 (business rules)</span>
+  C_unit  = C_should · D_qty · M_lead       C_total = C_unit · q</pre>
+      <div class="legend">V volume (mm³) · ρ density (g/cm³) · c_g effective material price (SAR/g) · R_hr machine rate (SAR/h) · Q̇ deposition rate (mm³/s) · τ_layer per-layer overhead (s) · ƒ_fill infill factor · D_qty quantity multiplier · M_lead lead-time multiplier · k_cx complexity · S setup fee · q quantity.</div>
+    </div>`;
+
+  body.innerHTML = costModelHTML + generalHTML + processesHTML + matsHTML;
 
   document.getElementById('s-add-mat').addEventListener('click', () => {
     const tbody = document.getElementById('s-mats-body');
@@ -1748,7 +1794,7 @@ function renderSettings() {
 }
 
 function matRow(key, m) {
-  const procs = ['fdm', 'sla', 'sls', 'cnc'];
+  const procs = Object.keys(state.processes);
   return `
     <tr data-key="${key}">
       <td><input type="text" class="m-key" value="${key}" readonly style="opacity:0.6;cursor:not-allowed;"></td>
@@ -1779,16 +1825,10 @@ function collectSettings() {
   const leadExp  = parseFloat(document.getElementById('s-lead-exp').value) || 1.4;
   next.general.currency = currency;
   next.general.leadMultipliers = { standard: leadStd, express: leadExp };
-  next.general.qtyTiers = [];
-  const tierRows = document.querySelectorAll('.s-tier-qty');
-  tierRows.forEach(q => {
-    const i = q.dataset.i;
-    const mult = document.querySelector(`.s-tier-mult[data-i="${i}"]`);
-    next.general.qtyTiers.push({
-      minQty: parseInt(q.value) || 1,
-      multiplier: parseFloat(mult.value) || 1.0
-    });
-  });
+  const minOrderEl = document.getElementById('s-min-order');
+  const learnEl = document.getElementById('s-learning');
+  if (minOrderEl) next.general.minOrder = parseFloat(minOrderEl.value) || 0;
+  if (learnEl) next.general.learningRate = Math.min(1, parseFloat(learnEl.value) || 1);
 
   Object.keys(next.processes).forEach(pKey => {
     const p = next.processes[pKey];
@@ -1841,6 +1881,29 @@ document.addEventListener('click', (e) => {
     showToast('Settings reset to defaults');
   }
 });
+
+// ---------- Embedded iframe height reporting (generalized protocol) ----------
+// Posts {type:'ffQuoteHeight'} for any engine; keeps {type:'ffPcbHeight'} as a
+// back-compat alias so existing marketplace listeners keep working.
+let __lastH = 0;
+function postHeight() {
+  if (!document.body.classList.contains('embedded')) return;
+  const h = Math.ceil(document.body.scrollHeight);
+  if (h && h !== __lastH) {
+    __lastH = h;
+    try {
+      parent.postMessage({ type: 'ffQuoteHeight', engine: '3d', height: h }, '*');
+      parent.postMessage({ type: 'ffPcbHeight', height: h }, '*');
+    } catch (e) { /* cross-origin parent — ignore */ }
+  }
+}
+if (engineCfg.embed) {
+  document.documentElement.style.height = 'auto';
+  window.addEventListener('load', postHeight);
+  window.addEventListener('resize', postHeight);
+  // headless/background preview safety: a few timed ticks since ResizeObserver may not fire
+  [120, 400, 900].forEach((t) => setTimeout(postHeight, t));
+}
 
 // Recompute viewer size after layout settles
 setTimeout(resize, 100);

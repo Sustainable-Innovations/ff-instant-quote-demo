@@ -96,6 +96,11 @@
   .settings-section { max-width: 1100px; background: var(--bg-elev); border: 1px solid var(--divider); margin-bottom: 20px; }
   .settings-section > h3 { font-size: 11px; font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); padding: 14px 20px; border-bottom: 1px solid var(--divider); }
   .settings-body-pad { padding: 20px; }
+  .cost-model { max-width: 1100px; background: var(--bg-elev); border: 1px solid var(--divider); margin-bottom: 20px; }
+  .cost-model > h3 { font-size: 11px; font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); padding: 14px 20px; border-bottom: 1px solid var(--divider); }
+  .cost-model .eqs { margin: 0; padding: 16px 20px; font-family: 'Courier New', monospace; font-size: 12.5px; line-height: 1.85; color: var(--text); white-space: pre-wrap; overflow-x: auto; }
+  .cost-model .eqs .eqhead { color: var(--accent); font-weight: 700; }
+  .cost-model .legend { padding: 0 20px 18px; font-size: 11.5px; color: var(--muted); line-height: 1.7; }
   .mats-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .mats-table th, .mats-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--divider); }
   .mats-table tr:last-child td { border-bottom: none; }
@@ -179,6 +184,7 @@
   .quote-hero .total { font-size: 44px; font-weight: 700; color: var(--lime); letter-spacing: -1.5px; line-height: 1; display: flex; align-items: baseline; }
   .quote-hero .unit { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 8px; letter-spacing: 0.4px; }
   .quote-hero .disclaimer { margin-top: 14px; font-size: 11px; color: rgba(255,255,255,0.72); letter-spacing: 0.3px; line-height: 1.5; }
+  .quote-hero .review-badge { display: inline-block; margin-bottom: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(255,193,7,0.18); color: #ffd34d; border: 1px solid rgba(255,193,7,0.45); font-size: 11px; letter-spacing: 0.3px; font-weight: 600; }
 
   .breakdown { font-size: 12px; }
   .breakdown .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; color: var(--muted); border-bottom: 1px solid #ECECEA; }
@@ -265,6 +271,7 @@
     </div>
 
     <div class="quote-hero" id="quote-hero" style="display:none;">
+      <div class="review-badge" id="review-badge" style="display:none;">⚠ Estimate — pending review</div>
       <div class="total" id="total-price">—</div>
       <div class="unit" id="unit-price">—</div>
       <div class="disclaimer">Indicative — generated in your browser. Circuit Guild confirms a firm quote before anything is charged.</div>
@@ -300,6 +307,12 @@
 import { unzipSync, strFromU8 } from 'https://esm.sh/fflate@0.8.2';
 import { read, plot, renderLayers, renderBoard, stringifySvg } from 'https://esm.sh/@tracespace/core@5.0.0-alpha.0';
 
+// --- FlexFactory portable core (Phase 0/3) ---
+import { computePCBQuote } from './quote.kernel.js';
+import { loadCoefficients, readEngineConfig, deepMerge as coreDeepMerge } from '../core/coefficients.js';
+import { createCapture, quoteGeneratedEvent, debounce } from '../core/capture.js';
+import { ry as ryGlyph, fmtNumber } from '../core/util/units.js';
+
 /* ---------------- default fab rates (admin-editable, SAR) ---------------- */
 const DEFAULTS = {
   currency: 'SAR',
@@ -318,12 +331,42 @@ const DEFAULTS = {
   via:    { 'Tented':0, 'Untented':0, 'Plugged':0.5, 'POFV':1.2 },
   goldFingers: 1.2, drillRate: 0.0008, testFee: 40, platformPct: 12,
   lead:   { 'Standard · 5-7 days':1.0, 'Batch · 48 h':1.25, 'Express · 24 h':1.6 },
+  // Mirrors engines/coefficients/pcb.default.json (canonical externalized copy + ?coeffs= target + test fixture).
+  leadDays: { 'Standard · 5-7 days':6, 'Batch · 48 h':2, 'Express · 24 h':1 },
+  review: { parserConfidenceFloor: 0.6, maxAreaCm2: 2500 },
 };
 const SKEY = 'ff_pcb_rates_v1';
 function loadSettings(){ try { const s = JSON.parse(localStorage.getItem(SKEY)); return s ? deepMerge(structuredClone(DEFAULTS), s) : structuredClone(DEFAULTS); } catch(e){ return structuredClone(DEFAULTS); } }
 function saveSettings(s){ localStorage.setItem(SKEY, JSON.stringify(s)); }
 function deepMerge(a,b){ for(const k in b){ if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])){ a[k]=deepMerge(a[k]||{},b[k]); } else a[k]=b[k]; } return a; }
 let SET = loadSettings();
+
+/* --- Phase 0/3: engine config (?embed / ?coeffs / ?capture), capture client --- */
+const engineCfg = readEngineConfig();
+const capture = createCapture({
+  transport: engineCfg.captureMode || 'localStorage',
+  context: { engine: 'pcb', supplierId: 'default' },
+});
+const emitQuoteGenerated = debounce((result) => {
+  capture.emit('quote_generated', quoteGeneratedEvent(result, {
+    fileMeta: state.fileMeta || null,
+    parserConfidence: currentParserConfidence(),
+  }));
+}, 500);
+// Parser confidence from how the board was detected (authoritative job file vs SVG fallback).
+function currentParserConfidence() {
+  const src = state.detected && state.detected.source;
+  if (!state.loaded) return 0.4;
+  if (src === 'Gerber job file') return 0.95;   // authoritative .gbrjob
+  if (src === 'Board geometry') return 0.75;    // SVG/geometry fallback
+  return 0.6;
+}
+// Supplier coefficient override via ?coeffs=<url> (Phase-4 host seam). Default unchanged.
+if (engineCfg.coeffsUrl) {
+  loadCoefficients('pcb', { coeffsUrl: engineCfg.coeffsUrl, defaults: structuredClone(DEFAULTS) })
+    .then((c) => { SET = coreDeepMerge(structuredClone(DEFAULTS), c); if (state.loaded) recompute(); })
+    .catch(() => {});
+}
 
 /* ---------------- state ---------------- */
 const state = {
@@ -333,9 +376,8 @@ const state = {
   spec: { material:'FR-4', layers:'2', w:'', h:'', qty:'100', thick:'1.6', mask:'Green', finish:'HASL (lead-free)', copper:'1 oz', via:'Tented', feat:'6/6 mil', gold:'No', lead:'Standard · 5-7 days' },
 };
 
-/* ---------------- riyal glyph (matches marketplace) ---------------- */
-const RY_PATHS = '<path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/>';
-const ry = (em)=> '<svg viewBox="0 0 1124.14 1256.39" style="height:'+em+'em;width:auto;display:inline-block;vertical-align:-0.06em;margin-right:.16em;flex-shrink:0" fill="currentColor" aria-hidden="true">'+RY_PATHS+'</svg>';
+/* ---------------- riyal glyph (single source of truth: engines/core/util/units.js) ---------------- */
+const ry = (em)=> ryGlyph(em, { valign: -0.06, mr: 0.16, flexShrink: true });
 
 /* ---------------- mask preview colours (soldermask hex baked by tracespace = #004200) ---------------- */
 const MASK_SWATCH = { Green:'#0a7a3b', Red:'#b3261e', Yellow:'#e3b505', Blue:'#13408c', White:'#e8e8e8', Black:'#15171c', Purple:'#5b2a86' };
@@ -343,12 +385,12 @@ const MASK_BOARD  = { Green:'#0a5c2a', Red:'#7c1518', Yellow:'#a6850a', Blue:'#1
 
 /* ---------------- helpers ---------------- */
 const $ = (s,r=document)=>r.querySelector(s);
-const fmt = (n)=> (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+const fmt = (n)=> fmtNumber(n);
 const money = (n)=> ry(0.82) + fmt(n);
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900); }
 /* embed: report content height so the parent iframe auto-sizes (no clipped price) */
 let __lastH = 0;
-function postHeight(){ if(!document.body.classList.contains('embedded')) return; const h = Math.ceil(document.body.scrollHeight); if (h && h !== __lastH){ __lastH = h; try { parent.postMessage({ type:'ffPcbHeight', height: h }, '*'); } catch(e){} } }
+function postHeight(){ if(!document.body.classList.contains('embedded')) return; const h = Math.ceil(document.body.scrollHeight); if (h && h !== __lastH){ __lastH = h; try { parent.postMessage({ type:'ffQuoteHeight', engine:'pcb', height: h }, '*'); parent.postMessage({ type:'ffPcbHeight', height: h }, '*'); } catch(e){} } }
 
 /* ---------------- embed: hide admin in customer view ---------------- */
 if (document.body.classList.contains('embedded')) { /* tabs hidden via CSS; ensure FF view */ }
@@ -405,6 +447,8 @@ async function handleFiles(fileList){
     const drill = countHoles(names.filter(n=>/\.(drl|xln|nc|drd|txt)$/i.test(n)).map(n=>entries[n]));
     det.holes = drill.holes; det.minHole = drill.minDia;
 
+    const zipFile = all.find(f=>/\.zip$/i.test(f.name)) || all[0];
+    if (zipFile) state.fileMeta = { name: zipFile.name, type: (zipFile.name.split('.').pop()||'').toLowerCase(), bytes: zipFile.size };
     applyDetected();
     await applyTheme();             // builds themed images for current mask
     state.loaded = true;
@@ -534,37 +578,13 @@ function buildParams(){
 }
 
 /* ---------------- pricing ---------------- */
-function nearestQtyFactor(qty){ const tiers = Object.keys(SET.qty).map(Number).sort((a,b)=>a-b); let f = SET.qty[tiers[0]]; for (const t of tiers){ if (qty>=t) f = SET.qty[String(t)]; } return f; }
+// Pricing math now lives in the portable kernel (engines/quote-pcb/quote.kernel.js).
+let lastResult = null;
 function compute(){
-  const s = state.spec;
-  const w = parseFloat(s.w)||0, h = parseFloat(s.h)||0, qty = parseInt(s.qty)||0;
-  const area = w*h/100;
-  const lay = SET.layer[s.layers] || SET.layer['2'];
-  const qf = nearestQtyFactor(qty);
-  const holes = state.detected.holes||0;
-  const perBoardBase = (lay.board + lay.area*area) * qf;
-  const adders = [
-    ['Surface finish · '+s.finish, SET.finish[s.finish]*area],
-    ['Copper weight · '+s.copper, SET.copper[s.copper]*area],
-    ['Solder-mask · '+s.mask, SET.mask[s.mask]],
-    ['Thickness · '+s.thick+' mm', SET.thick[s.thick]],
-    ['Fine features · '+s.feat, SET.feat[s.feat]],
-    ['Via covering · '+s.via, SET.via[s.via]],
-  ];
-  if (s.gold==='Yes') adders.push(['Gold fingers', SET.goldFingers]);
-  if (holes) adders.push(['Drilling · '+holes+' holes', SET.drillRate*holes]);
-  const items = [];
-  items.push({ l:'Engineering / tooling', s:'one-time · '+s.layers+'-layer', v: lay.setup });
-  items.push({ l:'Board fabrication', s:qty+' pcs · '+fmt(area)+' cm² · '+s.layers+'L', v: perBoardBase*qty });
-  for (const [l,per] of adders){ if (per>0) items.push({ l, s:qty+' pcs', v: per*qty }); }
-  items.push({ l:'Electrical test', s:'flying probe · per order', v: SET.testFee });
-  const subtotal = items.reduce((a,b)=>a+b.v,0);
-  const leadMult = SET.lead[s.lead]||1;
-  const leadAdd = subtotal*(leadMult-1);
-  const afterLead = subtotal+leadAdd;
-  const platform = afterLead*SET.platformPct/100;
-  const total = afterLead+platform;
-  return { items, subtotal, leadMult, leadAdd, platform, total, unit: qty?total/qty:0, qty };
+  lastResult = computePCBQuote(state.spec, state.detected, SET, { parserConfidence: currentParserConfidence() });
+  const c = lastResult.components;
+  return { items: c.items, subtotal: c.subtotal, leadMult: c.leadMult, leadAdd: c.leadAdd,
+           platform: c.platform, total: lastResult.price, unit: lastResult.unitPrice, qty: lastResult.quantity };
 }
 function recompute(){
   if (!state.loaded) return;
@@ -578,6 +598,9 @@ function recompute(){
   html += row('Platform fee', SET.platformPct+'%', money(r.platform));
   html += row('Total estimate','', money(r.total), 'total-row');
   $('#breakdown').innerHTML = html;
+  const badge = $('#review-badge');
+  if (badge) badge.style.display = lastResult.needsReview ? 'inline-block' : 'none';
+  emitQuoteGenerated(lastResult);
   postHeight();
 }
 function row(l,s,amt,cls=''){ return '<div class="row '+cls+'"><div class="lbl">'+l+(s?' <small>'+s+'</small>':'')+'</div><div class="amt">'+amt+'</div></div>'; }
@@ -602,7 +625,20 @@ function buildSettings(){
     + '<tr><td>Electrical test (per order)</td><td><input data-grp="scalar" data-key="testFee" value="'+SET.testFee+'"></td></tr>'
     + '<tr><td>Platform fee (%)</td><td><input data-grp="scalar" data-key="platformPct" value="'+SET.platformPct+'"></td></tr>'
     + '</table></div></div>';
-  body.innerHTML = layCard
+  const costModel = '<div class="cost-model"><h3>Cost model · how this quote is calculated</h3>'
+    + '<pre class="eqs"><span class="eqhead">Itemized should-cost</span>\n'
+    + '  A        = W · H ⁄ 100                       board area [cm²]\n'
+    + '  C_fab    = ( b_L + a_L · A ) · D_qty · q     fabrication (b_L, a_L by layer count L)\n'
+    + '  C_add,i  = r_i · A · q   (per-area)   or   r_i · q   (per-board)\n'
+    + '  C_setup  = S_L                              one-time tooling (layer-dependent)\n'
+    + '  C_test   = T                                electrical test (per order)\n'
+    + '  Subtotal = C_setup + C_fab + Σ C_add,i + C_test\n\n'
+    + '<span class="eqhead">Price</span>\n'
+    + '  C_lead   = Subtotal · ( M_lead − 1 )\n'
+    + '  C_plat   = ( Subtotal + C_lead ) · p_plat\n'
+    + '  C_total  = Subtotal + C_lead + C_plat        C_unit = C_total ⁄ q</pre>'
+    + '<div class="legend">A board area (cm²) · b_L per-board base, a_L area rate by layer count L · D_qty quantity multiplier · r_i adder rate (finish/copper per cm²; mask/thickness/features/via per board) · S_L tooling (SAR) · T test fee · M_lead lead-time multiplier · p_plat platform fee · q quantity.</div></div>';
+  body.innerHTML = costModel + layCard
     + tbl('qty', SET.qty, ['Qty ≥','× / board'])
     + tbl('finish', SET.finish, ['Surface finish','per cm²'])
     + tbl('copper', SET.copper, ['Copper weight','per cm²'])

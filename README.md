@@ -40,8 +40,8 @@ runs standalone — open `engines/quote-3d/index.html` directly.
 
 ## The 3D engine (`engines/quote-3d/index.html`)
 
-- **FF Engine** — three.js viewer + client-side STL/STEP analysis (volume, surface area, bounding box) + heuristic pricing in SAR. All coefficients configurable in the Settings tab.
-- **Settings** — edit currency, quantity-discount tiers, lead-time multipliers, per-process rates (FDM / SLA / SLS / CNC) and process-specific parameters (infill, layer height, tolerance, finish), plus a full materials editor. Persists to localStorage.
+- **FF Engine** — three.js viewer + client-side STL/STEP analysis (volume, surface area, bounding box) + should-cost pricing in SAR. Additive (polymer AM) only: FDM / SLA / SLS. (CNC machining is subtractive — a different cost model — and is intentionally out of this engine; it belongs in a dedicated CNC engine later.)
+- **Settings** — shows the cost model up top, then edit currency, quantity-discount tiers, lead-time multipliers, per-process rates (FDM / SLA / SLS) and process-specific parameters (infill, layer height), plus a full materials editor. Persists to localStorage.
 
 ## Features
 
@@ -51,7 +51,6 @@ runs standalone — open `engines/quote-3d/index.html` directly.
 - Process-specific pricing:
   - **FDM**: infill % (material scaling) + layer height (time scaling).
   - **SLA / SLS**: layer height.
-  - **CNC**: tolerance grade and surface finish multipliers.
 - Quantity-discount tiers and lead-time multipliers.
 - Full settings editor with reset-to-defaults, all persisted to the browser.
 
@@ -64,8 +63,9 @@ runs standalone — open `engines/quote-3d/index.html` directly.
 
 ## Running locally
 
-- **Engine only:** open `engines/quote-3d/index.html` directly in any modern browser. No server required.
-- **Full marketplace:** serve the repo root over HTTP (e.g. `python -m http.server 8741`) and open `http://localhost:8741/` — it redirects to `app/`. A server is needed because the marketplace fetches `.jsx` files. The included VS Code / Claude launch config (`.claude/launch.json`) does this on port 8741.
+- **Serve the repo root over HTTP** (e.g. `python -m http.server 8741`) and open `http://localhost:8741/` — it redirects to `app/`. The included VS Code / Claude launch config (`.claude/launch.json`) does this on port 8741.
+- A server is now required for the engines too: since the Phase-0 refactor, each engine imports a shared ES-module pricing core (`engines/core/`) and fetches its coefficients from `engines/coefficients/*.json`, which browsers block under `file://`. (Before the refactor all engine code was inlined, so the 3D engine could be opened directly — that's no longer the case.)
+- Run the prices-unchanged gate with `node engines/core/test/snapshot.mjs` (no npm install needed).
 
 ## Privacy
 

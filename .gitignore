@@ -14,6 +14,9 @@ desktop.ini
 *.swp
 *.swo
 
+# Local Claude Code tooling (keep launch.json, ignore installed skills)
+.claude/skills/
+
 # Build / tooling
 node_modules/
 dist/

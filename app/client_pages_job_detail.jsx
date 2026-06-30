@@ -570,17 +570,20 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
   const [quoting, setQuoting] = usePJob(false);
   const quoteRef = useRefJob(null);
   const galleryImages = d.galleryImages || [];
-  // The PCB engine flows naturally and reports its content height so the iframe never clips the price.
+  // Every engine reports its content height (ffQuoteHeight; ffPcbHeight kept as a back-compat
+  // alias) so the iframe never clips the price/breakdown.
   const [engineH, setEngineH] = usePJob(engineKey === 'pcb' ? 1180 : 820);
   useEffJob(() => {
-    if (engineKey !== 'pcb') return;
-    const onMsg = (e) => { if (e.data && e.data.type === 'ffPcbHeight' && e.data.height) setEngineH(Math.max(560, Math.min(3000, e.data.height))); };
+    const onMsg = (e) => {
+      if (!e.data || !e.data.height) return;
+      if (e.data.type === 'ffQuoteHeight' || e.data.type === 'ffPcbHeight') setEngineH(Math.max(560, Math.min(3000, e.data.height)));
+    };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, [engineKey]);
-  const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html' };
+  const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html', 'laser': '../engines/quote-laser/index.html' };
   const quoteUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
-  const quoteVersion = 'c733ed2';
+  const quoteVersion = 'p0j-20260629';
   const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (legacyQuote && legacyQuote.quoteProcess ? '&process=' + legacyQuote.quoteProcess : '');
 
   const startOrder = () => requireAuth(() => { setOrdering(true); window.scrollTo({ top: 0, behavior: 'smooth' }); });

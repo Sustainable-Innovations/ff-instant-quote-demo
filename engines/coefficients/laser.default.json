@@ -1,0 +1,62 @@
+{
+  "supplier": "default",
+  "version": "v1",
+  "process": "laser",
+  "_note": "Laser / sheet-metal cutting coefficient set. SAR. cutSpeed mm/min by thickness(mm); pierceSec by thickness; sheetCost SAR/m2 by thickness. Nest yield amortises sheet cost to the line.",
+  "currency": "SAR",
+  "rates": {
+    "machineRatePerHour": 360.0,
+    "programmingFee": 60.0,
+    "unloadSortPerPart": 0.8,
+    "deburrPerMeterCut": 2.5,
+    "learningRate": 1.0,
+    "overheadPct": 12,
+    "marginPct": 25,
+    "minCharge": 120.0,
+    "_pricingNote": "Canonical model: material + cutting are constant per unit (no blanket qty discount). programmingFee is the one-time per-order cost that amortises with qty — the real volume economy. learningRate (<1) applies a Wright curve to unload+deburr labor; 1.0 = neutral. Lead premium applies to conversion (cut/labor/programming), not sheet material."
+  },
+  "nest": {
+    "defaultYield": 0.72,
+    "_yieldNote": "Estimated fraction of sheet area converted to good parts on a typical production nest. Sheet cost is allocated to the line as partArea / (sheetArea x yield). Supplier-tunable; exposed in the breakdown."
+  },
+  "edgeQuality": {
+    "standard": { "label": "Standard edge", "speedMult": 1.0, "multiplier": 1.0 },
+    "fine":     { "label": "Fine / fusion edge", "speedMult": 0.7, "multiplier": 1.12 }
+  },
+  "materials": {
+    "mild_steel": {
+      "name": "Mild steel (O2)", "density": 7.85, "gas": "O2", "gasCostPerMin": 0.35,
+      "sheetCostPerM2": { "1": 38, "2": 58, "3": 82, "4": 105, "5": 130, "6": 158, "8": 205, "10": 255 },
+      "cutSpeed":       { "1": 7000, "2": 4200, "3": 2600, "4": 1900, "5": 1500, "6": 1200, "8": 800, "10": 600 },
+      "pierceSec":      { "1": 0.3, "2": 0.5, "3": 0.7, "4": 1.0, "5": 1.4, "6": 1.8, "8": 2.6, "10": 3.5 },
+      "thicknesses": [1, 2, 3, 4, 5, 6, 8, 10]
+    },
+    "stainless_304": {
+      "name": "Stainless 304 (N2)", "density": 8.0, "gas": "N2", "gasCostPerMin": 0.9,
+      "sheetCostPerM2": { "1": 95, "2": 150, "3": 220, "4": 295, "5": 380, "6": 470, "8": 640 },
+      "cutSpeed":       { "1": 5500, "2": 3000, "3": 1700, "4": 1100, "5": 750, "6": 520, "8": 300 },
+      "pierceSec":      { "1": 0.4, "2": 0.7, "3": 1.1, "4": 1.6, "5": 2.2, "6": 3.0, "8": 4.5 },
+      "thicknesses": [1, 2, 3, 4, 5, 6, 8]
+    },
+    "aluminium_5052": {
+      "name": "Aluminium 5052 (N2)", "density": 2.70, "gas": "N2", "gasCostPerMin": 0.9,
+      "sheetCostPerM2": { "1": 70, "2": 110, "3": 160, "4": 215, "5": 275, "6": 345 },
+      "cutSpeed":       { "1": 6000, "2": 3400, "3": 2000, "4": 1300, "5": 900, "6": 620 },
+      "pierceSec":      { "1": 0.4, "2": 0.6, "3": 1.0, "4": 1.5, "5": 2.1, "6": 2.8 },
+      "thicknesses": [1, 2, 3, 4, 5, 6]
+    }
+  },
+  "qty": [
+    { "minQty": 1, "multiplier": 1.0 },
+    { "minQty": 10, "multiplier": 0.9 },
+    { "minQty": 50, "multiplier": 0.78 },
+    { "minQty": 100, "multiplier": 0.68 },
+    { "minQty": 250, "multiplier": 0.6 }
+  ],
+  "lead": { "standard": 1.0, "express": 1.4 },
+  "leadDays": { "standard": 7, "express": 3 },
+  "review": {
+    "parserConfidenceFloor": 0.6,
+    "maxAreaCm2": 30000
+  }
+}

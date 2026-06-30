@@ -1,0 +1,65 @@
+{
+  "supplier": "default",
+  "version": "v1",
+  "process": "3d",
+  "_note": "Polymer AM engine coefficient set (FDM · SLA · SLS — additive only). SAR; 1 USD ~ 3.75 SAR. density g/cm3; pricePerG = effective billed SAR/g.",
+  "general": {
+    "currency": "SAR",
+    "parserConfidenceFloor": 0.6,
+    "qtyTiers": [
+      { "minQty": 1, "multiplier": 1.0 },
+      { "minQty": 10, "multiplier": 0.85 },
+      { "minQty": 50, "multiplier": 0.75 },
+      { "minQty": 100, "multiplier": 0.65 }
+    ],
+    "leadMultipliers": { "standard": 1.0, "express": 1.4 },
+    "leadDays": { "standard": 7, "express": 3 },
+    "minOrder": 20.0,
+    "learningRate": 1.0,
+    "_pricingNote": "Canonical model: variable cost (material+machine) is constant per unit; only setup amortises with qty (no blanket discount). marginPct/overheadPct per process; complexity scales machine TIME only. learningRate (<1) applies a Wright curve to post-processing labor; 1.0 = neutral. minOrder floors the order. qtyTiers retained for reference only — NOT used by the kernel."
+  },
+  "materials": {
+    "pla":         { "name": "PLA",            "density": 1.24, "pricePerG": 0.17, "processes": ["fdm"] },
+    "petg":        { "name": "PETG",           "density": 1.27, "pricePerG": 0.20, "processes": ["fdm"] },
+    "abs":         { "name": "ABS",            "density": 1.04, "pricePerG": 0.19, "processes": ["fdm"] },
+    "asa":         { "name": "ASA",            "density": 1.07, "pricePerG": 0.25, "processes": ["fdm"] },
+    "flex_tpu":    { "name": "Flex TPU",       "density": 1.20, "pricePerG": 0.34, "processes": ["fdm"] },
+    "nylon_fdm":   { "name": "Nylon 12 (FDM)", "density": 1.01, "pricePerG": 0.40, "processes": ["fdm"] },
+    "nylon_sls":   { "name": "Nylon 12 (SLS)", "density": 1.01, "pricePerG": 0.68, "processes": ["sls"] },
+    "resin_std":   { "name": "Standard resin", "density": 1.15, "pricePerG": 0.35, "processes": ["sla"] },
+    "resin_tough": { "name": "Tough resin",    "density": 1.18, "pricePerG": 0.60, "processes": ["sla"] }
+  },
+  "processes": {
+    "fdm": {
+      "name": "FDM 3D Printing",
+      "hourlyRate": 15.0, "setupFee": 13.0, "complexity": 1.0, "overheadPct": 0, "marginPct": 10, "mmPerHour": 18000,
+      "baseLayerHeight": 0.2,
+      "envelope": { "x": 300, "y": 300, "z": 300 },
+      "build": { "volumetricFlow_mm3ps": 8, "layerOverheadSec": 6, "supportFraction": 0.12, "postProcPerUnit": 2.0 },
+      "params": {
+        "infill":      { "label": "Infill",       "unit": "%",  "min": 10,   "max": 100,  "step": 5,    "default": 20 },
+        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.10, "max": 0.40, "step": 0.05, "default": 0.20 }
+      }
+    },
+    "sla": {
+      "name": "SLA 3D Printing",
+      "hourlyRate": 28.0, "setupFee": 22.5, "complexity": 1.0, "overheadPct": 0, "marginPct": 25, "mmPerHour": 9000,
+      "baseLayerHeight": 0.05,
+      "envelope": { "x": 200, "y": 200, "z": 250 },
+      "build": { "volumetricFlow_mm3ps": 40, "layerOverheadSec": 7, "supportFraction": 0.15, "postProcPerUnit": 3.0 },
+      "params": {
+        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.025, "max": 0.10, "step": 0.005, "default": 0.05 }
+      }
+    },
+    "sls": {
+      "name": "SLS 3D Printing",
+      "hourlyRate": 45.0, "setupFee": 56.0, "complexity": 1.0, "overheadPct": 0, "marginPct": 20, "mmPerHour": 11000,
+      "baseLayerHeight": 0.12,
+      "envelope": { "x": 200, "y": 200, "z": 330 },
+      "build": { "volumetricFlow_mm3ps": 25, "layerOverheadSec": 5, "supportFraction": 0.0, "postProcPerUnit": 2.5 },
+      "params": {
+        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.08, "max": 0.20, "step": 0.01, "default": 0.12 }
+      }
+    }
+  }
+}

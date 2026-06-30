@@ -83,7 +83,7 @@ const JOBS = [
   { id: 'J-4', kind: 'job', title: 'Bandsaw Cutting · Metal & Wood', vendor: 'Forge & Form', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['Cutting', 'Sheet'], cat: 'Laser', icon: 'tools', image: CARD_IMG(4), badge: { l: 'NEW', t: 'lime' }, off: 18, blurb: 'Precision stock cutting to length with deburring included.', fixed: true, from: 28 },
   { id: 'J-5', kind: 'job', title: 'Resin (SLA) High-Detail Prints', vendor: 'Vertex Fabrication', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['3D Print', 'SLA'], cat: '3D Printing', icon: 'box', image: CARD_IMG(5), off: 0, blurb: '8K resin detail for miniatures, jewelry masters and dental.', fixed: true, from: 60 },
   { id: 'J-6', kind: 'job', title: 'Flex PCB · Polyimide', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Flex'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(6), off: 7, blurb: 'Single and double-sided flex circuits with stiffeners.' },
-  { id: 'J-7', kind: 'job', title: 'Laser Cut · Acrylic & Ply', vendor: 'Atlas Makerworks', city: 'Jeddah', rating: 5.0, reviews: 137, tags: ['Laser', 'Sheet'], cat: 'Laser', icon: 'layers', image: CARD_IMG(7), off: 0, blurb: 'CO₂ laser cutting and engraving up to 1200×900 mm beds.', fixed: true, from: 35 },
+  { id: 'J-7', kind: 'job', title: 'Laser Cut · Sheet Metal', vendor: 'Atlas Makerworks', city: 'Jeddah', rating: 5.0, reviews: 137, tags: ['Laser', 'Sheet'], cat: 'Laser', icon: 'layers', image: CARD_IMG(7), badge: { l: 'NEW', t: 'lime' }, off: 0, blurb: 'Fiber laser cutting for mild steel, stainless and aluminium — upload a DXF for an instant nested price.', instant: true },
   { id: 'J-8', kind: 'job', title: '5-Axis CNC Milling', vendor: 'Northgate Labs', city: 'Khobar', rating: 5.0, reviews: 137, tags: ['CNC', 'Aluminium'], cat: 'CNC', icon: 'tools', image: CARD_IMG(8), badge: { l: 'TOP #5', t: 'blue' }, off: 0, blurb: 'Tight-tolerance machined parts in aluminium, brass and POM.' },
   { id: 'J-9', kind: 'job', title: 'Bandsaw Cutting · Heavy Stock', vendor: 'Forge & Form', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['Cutting', 'Metal'], cat: 'Laser', icon: 'tools', image: CARD_IMG(9), off: 18, blurb: 'Horizontal bandsaw for bar and tube up to 250 mm.' },
   { id: 'J-10', kind: 'job', title: 'SMT Assembly · Reflow', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['Assembly', 'SMT'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(10), off: 0, blurb: 'Stencil, pick-and-place and reflow for small to medium runs.' },
@@ -468,6 +468,29 @@ const JOB_DETAILS = {
       { ic: 'upload', t: 'Upload your design', s: 'Gerber, ODB++ or IPC-2581 — parsed in your browser' },
       { ic: 'gear',   t: 'Pick layers, finish & quantity', s: 'Live indicative price as you change options' },
       { ic: 'send',   t: 'Request supplier match', s: 'Circuit Guild confirms a firm quote' },
+    ],
+  },
+  'J-7': {
+    id: 'J-7',
+    crumb: ['Home', 'Jobs', 'Laser', 'Laser Cut · Sheet Metal'],
+    location: 'Industrial Area, Jeddah',
+    available: 'Quoting instantly',
+    quote: true,                 // embed the instant-quote engine
+    quoteEngine: 'laser',        // laser / sheet-metal engine
+    quoteProcess: 'laser',
+    summary: 'Fiber-laser flat-pattern cutting in mild steel, stainless and aluminium. Upload a DXF for an instant, indicative price — material, thickness, quantity and nest yield update live. Atlas Makerworks confirms a firm quote before anything is charged.',
+    specs: [
+      { k: 'Materials',   v: 'Mild steel · Stainless 304 · Aluminium', icon: 'layers' },
+      { k: 'Thickness',   v: '1 – 10 mm (material-dependent)', icon: 'filter' },
+      { k: 'Sheet size',  v: 'up to 2500 × 1250 mm', icon: 'box' },
+      { k: 'Edge',        v: 'Standard · fine / fusion edge', icon: 'gear' },
+      { k: 'Lead time',   v: '3 days express · 7 standard', icon: 'truck' },
+      { k: 'Tolerance',   v: '± 0.1 mm typical', icon: 'wallet' },
+    ],
+    steps: [
+      { ic: 'upload', t: 'Upload your DXF', s: 'Flat pattern — parsed and nested in your browser' },
+      { ic: 'gear',   t: 'Pick material, thickness & quantity', s: 'Live indicative price as you change options' },
+      { ic: 'send',   t: 'Request supplier match', s: 'Atlas Makerworks confirms a firm quote' },
     ],
   },
 };

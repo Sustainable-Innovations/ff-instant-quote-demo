@@ -279,6 +279,72 @@
     border-color: var(--divider);
     max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  .quote-start-panel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(520px, calc(100vw - 48px));
+    background: rgba(255,255,255,0.94);
+    border: 1px solid var(--divider);
+    padding: 24px;
+    z-index: 45;
+    box-shadow: 0 18px 50px rgba(8, 18, 46, 0.10);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    text-align: center;
+  }
+  .quote-start-panel.hidden { display: none; }
+  .quote-start-panel h2 {
+    font-size: 20px;
+    line-height: 1.2;
+    letter-spacing: 0;
+    margin-bottom: 8px;
+  }
+  .quote-start-panel p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 18px;
+  }
+  .quote-start-panel .summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 18px;
+    text-align: left;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .quote-start-panel .summary span {
+    border: 1px solid var(--divider);
+    padding: 9px 10px;
+    background: var(--bg);
+  }
+  .quote-start-panel .summary strong {
+    display: block;
+    color: var(--text);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .quote-start-panel button {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 13px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .quote-start-panel button:hover { background: var(--accent-hover); }
+  .quote-start-panel .note {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 11px;
+  }
   .viewer-hint {
     position: absolute; bottom: 16px; left: 16px;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px;
@@ -379,6 +445,48 @@
   .breakdown { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; }
   .breakdown .row { display: flex; justify-content: space-between; padding: 5px 0; color: var(--muted); }
   .breakdown .row.total-row { border-top: 1px solid var(--divider); margin-top: 8px; padding-top: 10px; color: var(--text); font-weight: 600; }
+  .slice-progress { margin: 10px 0 12px; height: 8px; background: var(--divider); overflow: hidden; }
+  .slice-progress > div { height: 100%; background: var(--accent); width: 0%; transition: width 0.25s ease; }
+  .loading-pane .slice-status {
+    width: min(520px, calc(100vw - 48px));
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: var(--text);
+    text-align: left;
+  }
+  .loading-pane .slice-status.hidden { display: none; }
+  .slice-status .slice-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .slice-status .slice-subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .slice-status .slice-progress {
+    height: 10px;
+    margin: 0 0 12px;
+  }
+  .slice-status .slice-meta {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 18px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .slice-status .slice-meta strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .risk-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 11px; color: var(--muted); }
+  .risk-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; vertical-align: middle; }
+  .risk-legend .safe::before { background: #16A34A; }
+  .risk-legend .warn-risk::before { background: #EAB308; }
+  .risk-legend .bad-risk::before { background: #DC2626; }
 
   .cta-primary {
     width: 100%; background: var(--lime); color: var(--text);
@@ -551,12 +659,20 @@
     <div class="viewer-overlay">
       <span class="chip file mono" id="file-chip" style="display:none;"></span>
     </div>
+    <div class="quote-start-panel hidden" id="quote-start-panel">
+      <h2>Configuration ready</h2>
+      <p>Review the settings on the right, then start slicing and cost estimation to generate the quote.</p>
+      <div class="summary" id="quote-start-summary"></div>
+      <button type="button" id="quote-start-btn">Start slicing and quote</button>
+      <div class="note">No price is calculated until you start this step.</div>
+    </div>
     <button class="reset-btn" id="reset-btn" style="display:none;">↺ New file</button>
     <div class="viewer-hint mono" id="viewer-hint" style="display:none;">Drag to orbit · Scroll to zoom · Right-drag to pan</div>
 
     <div id="loading-pane" class="loading-pane hidden">
       <div class="spinner"></div>
       <div class="txt" id="loading-text">Analyzing geometry…</div>
+      <div class="slice-status hidden" id="slice-status-panel"></div>
     </div>
 
     <div id="upload-pane">
@@ -629,6 +745,12 @@
       <div class="field">
         <label for="f-material">Material</label>
         <select id="f-material"></select>
+      </div>
+      <div class="field">
+        <label for="f-machine">Machine</label>
+        <select id="f-machine">
+          <option value="">Auto-select</option>
+        </select>
       </div>
       <div id="process-params"></div>
       <div class="field">
@@ -717,8 +839,11 @@ import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 // --- FlexFactory portable core (Phase 0) ---
 import { computeAMQuote } from './quote.kernel.js';
 import { surrogateTimeModel } from './slicer/fallback.estimate.js';
+import { sliceMesh } from './slicer/slicer.bridge.js';
 import { loadCoefficients, readEngineConfig } from '../core/coefficients.js';
 import { createCapture, quoteGeneratedEvent, debounce } from '../core/capture.js';
+import { meshTopology } from '../core/util/geometry.js';
+import { analyzeMeshQuality } from '../core/mesh-quality.js';
 import { ry as ryGlyph, fmtPrice as fmtPriceCore, fmtPriceText as fmtPriceTextCore } from '../core/util/units.js';
 
 // ---------- Pricing data (SAR; 1 USD ≈ 3.75 SAR) ----------
@@ -734,7 +859,19 @@ const DEFAULTS = {
     leadMultipliers: { standard: 1.00, express: 1.40 },
     leadDays: { standard: 7, express: 3 },
     minOrder: 20.0,
-    learningRate: 1.0
+    learningRate: 1.0,
+    complexityModel: {
+      cap: 1.3,
+      baselineSaV: 0.6,
+      baselineSupportFraction: 0.15,
+      wOverhang: 0.08,
+      wThin: 0.06,
+      wAspect: 0.06,
+      wHoles: 0.05,
+      wOpen: 0.08,
+      holeCap: 4,
+      reviewThreshold: 1.25
+    }
   },
   // density = g/cm³ (physical); pricePerG = effective billed material cost in SAR/g
   // (~2× retail spool/resin/powder cost to cover supports, purge, failed builds and
@@ -755,27 +892,120 @@ const DEFAULTS = {
       name: 'FDM 3D Printing', hourlyRate: 15.00, setupFee: 13.00, complexity: 1.00, overheadPct: 0, marginPct: 10, mmPerHour: 18000,
       envelope: { x: 300, y: 300, z: 300 },
       build: { volumetricFlow_mm3ps: 8, layerOverheadSec: 6, supportFraction: 0.12, postProcPerUnit: 2.0 },
+      machines: [
+        {
+          id: 'fdm-prusa-mk4',
+          name: 'Prusa MK4',
+          ratePerHour: 15.00,
+          envelope: { x: 250, y: 210, z: 220 },
+          materials: ['pla', 'petg', 'abs', 'asa', 'flex_tpu', 'nylon_fdm'],
+          build: { volumetricFlow_mm3ps: 8, layerOverheadSec: 6, supportFraction: 0.12, postProcPerUnit: 2.0 },
+          quality: 1.0
+        },
+        {
+          id: 'fdm-bambu-x1c',
+          name: 'Bambu Lab X1-C',
+          ratePerHour: 18.00,
+          envelope: { x: 256, y: 256, z: 256 },
+          materials: ['pla', 'petg', 'abs', 'asa', 'flex_tpu'],
+          build: { volumetricFlow_mm3ps: 24, layerOverheadSec: 3.5, supportFraction: 0.12, postProcPerUnit: 2.0 },
+          quality: 1.0
+        },
+        {
+          id: 'fdm-modix-big60',
+          name: 'Modix Big-60 (large format)',
+          ratePerHour: 28.00,
+          envelope: { x: 600, y: 600, z: 660 },
+          materials: ['pla', 'petg', 'abs', 'asa'],
+          build: { volumetricFlow_mm3ps: 14, layerOverheadSec: 9, supportFraction: 0.12, postProcPerUnit: 2.0 },
+          quality: 0.95
+        }
+      ],
       params: {
+        quality:      { label: 'Print quality', type: 'select', default: 'standard', options: [
+          { value: 'draft', label: 'Draft - faster', layerHeight: 0.28 },
+          { value: 'standard', label: 'Standard', layerHeight: 0.20 },
+          { value: 'fine', label: 'Fine - smoother', layerHeight: 0.12 }
+        ] },
         infill:       { label: 'Infill',       unit: '%',  min: 10,    max: 100,  step: 5,     default: 20 },
-        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.10,  max: 0.40, step: 0.05,  default: 0.20 }
+        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.10,  max: 0.40, step: 0.05,  default: 0.20, hidden: true }
       },
       baseLayerHeight: 0.20 // reference layer height used in time scaling
     },
     sla: {
       name: 'SLA 3D Printing', hourlyRate: 28.00, setupFee: 22.50, complexity: 1.00, overheadPct: 0, marginPct: 25, mmPerHour: 9000,
       envelope: { x: 200, y: 200, z: 250 },
-      build: { volumetricFlow_mm3ps: 40, layerOverheadSec: 7, supportFraction: 0.15, postProcPerUnit: 3.0 },
+      build: { kind: 'resin', layerTimeSec: 4.0, deadTimeSec: 7.0, bottomLayers: 5, bottomExposureMult: 4.0, supportFraction: 0.15, laserTraceFactor: 0.08, postProcPerUnit: 3.0 },
+      machines: [
+        {
+          id: 'sla-elegoo-saturn',
+          name: 'Elegoo Saturn',
+          ratePerHour: 18.00,
+          envelope: { x: 219, y: 123, z: 250 },
+          materials: ['resin_std'],
+          build: { kind: 'resin', layerTimeSec: 2.2, deadTimeSec: 5.5, bottomLayers: 5, bottomExposureMult: 4.0, supportFraction: 0.15, laserTraceFactor: 0.0, postProcPerUnit: 3.0 },
+          quality: 0.9
+        },
+        {
+          id: 'sla-formlabs-form3-plus',
+          name: 'Formlabs Form 3+',
+          ratePerHour: 28.00,
+          envelope: { x: 145, y: 145, z: 185 },
+          materials: ['resin_std', 'resin_tough'],
+          build: { kind: 'resin', layerTimeSec: 4.0, deadTimeSec: 7.0, bottomLayers: 5, bottomExposureMult: 4.0, supportFraction: 0.16, laserTraceFactor: 0.08, postProcPerUnit: 3.0 },
+          quality: 1.0
+        },
+        {
+          id: 'sla-formlabs-form3l',
+          name: 'Formlabs Form 3L',
+          ratePerHour: 42.00,
+          envelope: { x: 335, y: 200, z: 300 },
+          materials: ['resin_std', 'resin_tough'],
+          build: { kind: 'resin', layerTimeSec: 4.2, deadTimeSec: 8.0, bottomLayers: 5, bottomExposureMult: 4.0, supportFraction: 0.16, laserTraceFactor: 0.08, postProcPerUnit: 3.5 },
+          quality: 1.0
+        }
+      ],
       params: {
-        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.025, max: 0.10, step: 0.005, default: 0.050 }
+        quality:      { label: 'Print quality', type: 'select', default: 'standard', options: [
+          { value: 'draft', label: 'Draft - faster', layerHeight: 0.10 },
+          { value: 'standard', label: 'Standard', layerHeight: 0.05 },
+          { value: 'fine', label: 'Fine - smoother', layerHeight: 0.025 }
+        ] },
+        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.025, max: 0.10, step: 0.005, default: 0.050, hidden: true }
       },
       baseLayerHeight: 0.05
     },
     sls: {
       name: 'SLS 3D Printing', hourlyRate: 45.00, setupFee: 56.00, complexity: 1.00, overheadPct: 0, marginPct: 20, mmPerHour: 11000,
       envelope: { x: 200, y: 200, z: 330 },
-      build: { volumetricFlow_mm3ps: 25, layerOverheadSec: 5, supportFraction: 0.0, postProcPerUnit: 2.5 },
+      build: { kind: 'powder', chamber: { x: 200, y: 200, z: 330 }, layerTimeSec: 9.0, layerHeight: 0.12, packingDensity: 0.10, powderRefreshFraction: 0.5, postProcPerUnit: 2.5 },
+      machines: [
+        {
+          id: 'sls-formlabs-fuse1-plus',
+          name: 'Formlabs Fuse 1+',
+          ratePerHour: 45.00,
+          envelope: { x: 165, y: 165, z: 300 },
+          materials: ['nylon_sls'],
+          build: { kind: 'powder', chamber: { x: 165, y: 165, z: 300 }, layerTimeSec: 9.0, layerHeight: 0.11, packingDensity: 0.10, powderRefreshFraction: 0.5, postProcPerUnit: 2.5 },
+          quality: 1.0
+        },
+        {
+          id: 'sls-eos-p396',
+          name: 'EOS P396',
+          ratePerHour: 85.00,
+          envelope: { x: 340, y: 340, z: 600 },
+          materials: ['nylon_sls'],
+          build: { kind: 'powder', chamber: { x: 340, y: 340, z: 600 }, layerTimeSec: 8.0, layerHeight: 0.12, packingDensity: 0.12, powderRefreshFraction: 0.45, postProcPerUnit: 3.5 },
+          quality: 1.0
+        }
+      ],
       params: {
-        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.08, max: 0.20, step: 0.01,   default: 0.12 }
+        quality:      { label: 'Print quality', type: 'select', default: 'standard', options: [
+          { value: 'draft', label: 'Draft - faster', layerHeight: 0.16 },
+          { value: 'standard', label: 'Standard', layerHeight: 0.12 },
+          { value: 'fine', label: 'Fine - smoother', layerHeight: 0.08 }
+        ] },
+        layerHeight:  { label: 'Layer height', unit: 'mm', min: 0.08, max: 0.20, step: 0.01,   default: 0.12, hidden: true }
       },
       baseLayerHeight: 0.12
     }
@@ -786,7 +1016,7 @@ const DEFAULTS = {
 const deepClone = (o) => JSON.parse(JSON.stringify(o));
 
 // ---------- Persisted state ----------
-const STORAGE_KEY = 'ff_instant_quote_settings_v2'; // v2: canonical pricing (margin/minOrder; no qtyTiers/complexity-markup)
+const STORAGE_KEY = 'ff_instant_quote_settings_v3'; // v3: machine profiles + auto-complexity
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -811,7 +1041,9 @@ function mergeProcesses(saved) {
       out[k].hourlyRate = saved[k].hourlyRate ?? out[k].hourlyRate;
       out[k].setupFee   = saved[k].setupFee   ?? out[k].setupFee;
       out[k].complexity = saved[k].complexity ?? out[k].complexity;
+      out[k].complexityOverride = saved[k].complexityOverride ?? out[k].complexityOverride;
       out[k].mmPerHour  = saved[k].mmPerHour  ?? out[k].mmPerHour;
+      if (Array.isArray(saved[k].machines)) out[k].machines = saved[k].machines;
     }
   });
   return out;
@@ -858,7 +1090,7 @@ rim.position.set(-1, 0.5, -1);
 scene.add(rim);
 
 // Grid
-const grid = new THREE.GridHelper(400, 20, 0xCECECB, 0xDDDDDD);
+let grid = new THREE.GridHelper(400, 20, 0xCECECB, 0xDDDDDD);
 grid.material.opacity = 0.35; grid.material.transparent = true;
 scene.add(grid);
 
@@ -949,14 +1181,54 @@ function analyzeGeometry(geometry) {
     surface += cross.length() / 2;
   }
 
-  const watertight = computeWatertight(pos, size.length());
+  const diag = size.length();
+  const watertight = computeWatertight(pos, diag);
+  const topology = meshTopology(pos.array, pos.count, diag);
   return {
     volume_mm3: Math.abs(volume),
     surface_mm2: surface,
     bbox_mm: { x: size.x, y: size.y, z: size.z },
     triCount,
-    watertight
+    watertight,
+    genus: topology.genus
   };
+}
+
+function geometryToBinarySTL(geometry) {
+  const geom = geometry.index ? geometry.toNonIndexed() : geometry;
+  const pos = geom.attributes.position;
+  const triCount = Math.floor(pos.count / 3);
+  const buffer = new ArrayBuffer(84 + triCount * 50);
+  const view = new DataView(buffer);
+  view.setUint32(80, triCount, true);
+
+  const ax = { x: 0, y: 0, z: 0 };
+  const bx = { x: 0, y: 0, z: 0 };
+  const cx = { x: 0, y: 0, z: 0 };
+  let offset = 84;
+  for (let i = 0; i < pos.count; i += 3) {
+    ax.x = pos.getX(i); ax.y = pos.getY(i); ax.z = pos.getZ(i);
+    bx.x = pos.getX(i + 1); bx.y = pos.getY(i + 1); bx.z = pos.getZ(i + 1);
+    cx.x = pos.getX(i + 2); cx.y = pos.getY(i + 2); cx.z = pos.getZ(i + 2);
+
+    const ux = bx.x - ax.x, uy = bx.y - ax.y, uz = bx.z - ax.z;
+    const vx = cx.x - ax.x, vy = cx.y - ax.y, vz = cx.z - ax.z;
+    let nx = uy * vz - uz * vy;
+    let ny = uz * vx - ux * vz;
+    let nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    nx /= len; ny /= len; nz /= len;
+
+    for (const n of [nx, ny, nz]) { view.setFloat32(offset, n, true); offset += 4; }
+    for (const v of [ax, bx, cx]) {
+      view.setFloat32(offset, v.x, true); offset += 4;
+      view.setFloat32(offset, v.y, true); offset += 4;
+      view.setFloat32(offset, v.z, true); offset += 4;
+    }
+    view.setUint16(offset, 0, true); offset += 2;
+  }
+  if (geom !== geometry) geom.dispose();
+  return buffer;
 }
 
 // ---------- UI state ----------
@@ -968,6 +1240,10 @@ const ui = {
   dropError: document.getElementById('drop-error'),
   loadingPane: document.getElementById('loading-pane'),
   loadingText: document.getElementById('loading-text'),
+  sliceStatusPanel: document.getElementById('slice-status-panel'),
+  quoteStartPanel: document.getElementById('quote-start-panel'),
+  quoteStartSummary: document.getElementById('quote-start-summary'),
+  quoteStartBtn: document.getElementById('quote-start-btn'),
   fileChip: document.getElementById('file-chip'),
   resetBtn: document.getElementById('reset-btn'),
   viewerHint: document.getElementById('viewer-hint'),
@@ -990,6 +1266,7 @@ const ui = {
   fUnits: document.getElementById('f-units'),
   fProcess: document.getElementById('f-process'),
   fMaterial: document.getElementById('f-material'),
+  fMachine: document.getElementById('f-machine'),
   fQty: document.getElementById('f-qty'),
   fLead: document.getElementById('f-lead'),
 
@@ -1016,10 +1293,24 @@ const ui = {
 
 let currentAnalysis = null;   // geometry scaled to the selected source unit
 let baseAnalysis = null;      // geometry as parsed (coordinates assumed to be in mm)
+let currentGeometry = null;   // parsed geometry kept offscreen until display orientation is known
+let displayedOrientation = null;
+let currentQuality = null;
 let currentFilename = null;
 let currentFileMeta = null;       // {name, type, bytes} for capture
 let currentParserConfidence = 1;  // 1 for STL; lower for STEP tessellation
 let lastResult = null;            // last QuoteResult from the kernel
+let currentSliceMeshBuffer = null; // STL ArrayBuffer for opt-in real slicer
+const sliceCache = new Map();
+const slicePending = new Set();
+const sliceErrors = new Map();
+const sliceProgress = new Map();
+const SLICE_BUDGET_MS = 180000;
+const SLICE_UPLOAD_LIMIT_BYTES = 50 * 1024 * 1024;
+let sliceTicker = null;
+let lastSlicerStatus = null;
+let quoteRunRequested = false;
+let quoteRunId = 0;
 
 // --- Phase 0: engine config (?embed / ?coeffs / ?capture / ?process), capture client ---
 const engineCfg = readEngineConfig();
@@ -1028,9 +1319,30 @@ const capture = createCapture({
   context: { engine: '3d', supplierId: 'default' },
 });
 const emitQuoteGenerated = debounce((result) => {
+  const c = result.components || {};
   capture.emit('quote_generated', quoteGeneratedEvent(result, {
     fileMeta: currentFileMeta,
     parserConfidence: currentParserConfidence,
+    overrides: {
+      machineId: c.machine && c.machine.id,
+      machine: c.machine || null,
+      machineAlternatives: c.machineAlternatives || [],
+      buildTimeSource: c.buildTimeSource || null,
+      slicer: c.slicer || null,
+      slicerStatus: lastSlicerStatus,
+      selectedOrientation: c.selectedOrientation || null,
+      slicerTrials: c.slicerTrials || [],
+      orientationScore: c.orientationScore || null,
+      analysis: c.analysis || currentQuality || null,
+      modelKind: c.modelKind || null,
+      resinLayerTimeSec: c.resinLayerTimeSec ?? null,
+      deadTimeSec: c.deadTimeSec ?? null,
+      bottomLayers: c.bottomLayers ?? null,
+      packingDensity: c.packingDensity ?? null,
+      occupancyShare: c.occupancyShare ?? null,
+      powderRefreshGrams: c.powderRefreshGrams ?? null,
+      complexity: c.complexity || null,
+    },
   }));
 }, 500);
 
@@ -1055,7 +1367,8 @@ function applyUnits() {
     surface_mm2: baseAnalysis.surface_mm2 * f * f,
     bbox_mm: { x: baseAnalysis.bbox_mm.x * f, y: baseAnalysis.bbox_mm.y * f, z: baseAnalysis.bbox_mm.z * f },
     triCount: baseAnalysis.triCount,
-    watertight: baseAnalysis.watertight
+    watertight: baseAnalysis.watertight,
+    genus: baseAnalysis.genus
   };
   populateReadout(currentAnalysis);
   updateQuote();
@@ -1091,7 +1404,7 @@ setTimeout(() => renderProcessParams(), 0);
 // Default behaviour is unchanged — the bundled engines/coefficients/fdm.default.json mirrors the
 // inline defaults below, so without ?coeffs= prices are identical.
 if (engineCfg.coeffsUrl) {
-  loadCoefficients('fdm', { coeffsUrl: engineCfg.coeffsUrl, defaults: deepClone(DEFAULTS) })
+  loadCoefficients('fdm', { coeffsUrl: engineCfg.coeffsUrl, defaults: deepClone(DEFAULTS), storageKey: STORAGE_KEY })
     .then((c) => {
       if (c.general) state.general = c.general;
       if (c.materials) state.materials = c.materials;
@@ -1157,9 +1470,19 @@ function handleFile(file) {
   }
   currentFilename = file.name;
   currentFileMeta = { name: file.name, type: getExt(file.name), bytes: file.size };
+  currentGeometry = null;
+  displayedOrientation = null;
+  currentQuality = null;
+  currentSliceMeshBuffer = null;
+  resetQuoteRun();
 
   ui.statusChip.textContent = '● LOADING';
   ui.loadingPane.classList.remove('hidden');
+  hideQuoteStartPanel();
+  if (ui.sliceStatusPanel) {
+    ui.sliceStatusPanel.classList.add('hidden');
+    ui.sliceStatusPanel.innerHTML = '';
+  }
   ui.loadingText.textContent = 'Reading file…';
   ui.uploadPane.classList.add('hidden');
 
@@ -1171,6 +1494,7 @@ function handleFile(file) {
   reader.onload = (e) => {
     if (ext === 'stl') {
       ui.loadingText.textContent = 'Parsing STL…';
+      currentSliceMeshBuffer = e.target.result.slice(0);
       setTimeout(() => parseSTL(e.target.result), 30);
     } else {
       ui.loadingText.textContent = 'Loading STEP parser (first use downloads ~8 MB)…';
@@ -1288,13 +1612,13 @@ function finishGeometry(geometry, sourceLabel) {
   currentParserConfidence = sourceLabel === 'STEP' ? 0.8 : 0.95;
   ui.loadingText.textContent = 'Computing volume…';
   setTimeout(() => {
+    currentGeometry = geometry;
+    displayedOrientation = null;
     baseAnalysis = analyzeGeometry(geometry);
+    currentSliceMeshBuffer = geometryToBinarySTL(geometry);
     if (ui.fUnits) ui.fUnits.value = 'mm';   // default each file to mm; user opts into cm/in
-    addMeshToScene(geometry);
     showQuoteUI();
     applyUnits();              // sets currentAnalysis, populates readout, runs the quote
-    ui.loadingPane.classList.add('hidden');
-    ui.statusChip.textContent = '● QUOTED';
   }, 30);
 }
 
@@ -1305,8 +1629,14 @@ function addMeshToScene(geometry) {
     currentMesh.material.dispose();
   }
   geometry.computeVertexNormals();
+  const hasVertexColors = !!geometry.attributes.color;
   const material = new THREE.MeshStandardMaterial({
-    color: 0x0135f4, metalness: 0.15, roughness: 0.55, flatShading: false
+    color: hasVertexColors ? 0xffffff : 0x0135f4,
+    metalness: hasVertexColors ? 0.02 : 0.15,
+    roughness: 0.58,
+    flatShading: false,
+    vertexColors: hasVertexColors,
+    side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(geometry, material);
 
@@ -1336,12 +1666,81 @@ function addMeshToScene(geometry) {
   newGrid.material.opacity = 0.35; newGrid.material.transparent = true;
   newGrid.position.y = -size.y / 2;
   scene.add(newGrid);
+  grid = newGrid;
 
   ui.fileChip.style.display = 'inline-block';
   ui.fileChip.textContent = currentFilename;
   ui.resetBtn.style.display = 'block';
   ui.viewerHint.style.display = 'block';
   requestRender();
+}
+
+function removeMeshFromScene() {
+  if (currentMesh) {
+    scene.remove(currentMesh);
+    currentMesh.geometry.dispose();
+    currentMesh.material.dispose();
+    currentMesh = null;
+  }
+  ui.fileChip.style.display = 'none';
+  ui.viewerHint.style.display = 'none';
+  displayedOrientation = null;
+  requestRender();
+}
+
+function prusaOrientationTransform(name, x, y, z) {
+  if (name === 'lay_x') return { x, y: z, z: -y };
+  if (name === 'lay_y') return { x: z, y, z: -x };
+  if (name === 'low_height') return { x: z, y, z: -x };
+  if (name === 'largest_face_down') return { x, y: z, z: -y };
+  return { x, y, z };
+}
+
+function prusaToViewerTransform(x, y, z) {
+  return { x, y: z, z: -y };
+}
+
+function geometryForOrientation(source, orientationName) {
+  const clone = source.clone();
+  const pos = clone.attributes.position;
+  const prusaPositions = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const p = prusaOrientationTransform(orientationName, pos.getX(i), pos.getY(i), pos.getZ(i));
+    prusaPositions[i * 3] = p.x;
+    prusaPositions[i * 3 + 1] = p.y;
+    prusaPositions[i * 3 + 2] = p.z;
+    const v = prusaToViewerTransform(p.x, p.y, p.z);
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  pos.needsUpdate = true;
+  clone.computeBoundingBox();
+  clone.computeVertexNormals();
+  currentQuality = analyzeMeshQuality(prusaPositions, pos.count);
+  const colors = new Float32Array(pos.count * 3);
+  const palette = [
+    [0.10, 0.64, 0.29], // safe green
+    [0.92, 0.66, 0.03], // advisory yellow
+    [0.86, 0.15, 0.15], // risk red
+  ];
+  const classes = currentQuality.riskClasses || [];
+  for (let tri = 0; tri < Math.floor(pos.count / 3); tri++) {
+    const color = palette[classes[tri] || 0] || palette[0];
+    for (let v = 0; v < 3; v++) {
+      const off = (tri * 3 + v) * 3;
+      colors[off] = color[0];
+      colors[off + 1] = color[1];
+      colors[off + 2] = color[2];
+    }
+  }
+  clone.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return clone;
+}
+
+function showGeometryOrientation(orientationName = 'original') {
+  if (!currentGeometry) return;
+  if (displayedOrientation === orientationName && currentMesh) return;
+  addMeshToScene(geometryForOrientation(currentGeometry, orientationName));
+  displayedOrientation = orientationName;
 }
 
 function populateReadout(a) {
@@ -1379,6 +1778,17 @@ function getLead() {
   return active ? active.dataset.lead : 'standard';
 }
 
+function applyQualityPreset(process, vals) {
+  const qualitySpec = process && process.params && process.params.quality;
+  if (!qualitySpec || !Array.isArray(qualitySpec.options)) return vals;
+  const selected = vals.quality || qualitySpec.default;
+  const opt = qualitySpec.options.find(o => o.value === selected);
+  if (opt && Number.isFinite(Number(opt.layerHeight))) {
+    vals.layerHeight = Number(opt.layerHeight);
+  }
+  return vals;
+}
+
 function getProcessParamValues(processKey) {
   const vals = {};
   const process = PROCESSES[processKey];
@@ -1390,7 +1800,335 @@ function getProcessParamValues(processKey) {
     if (spec.type === 'select') vals[pKey] = input.value;
     else vals[pKey] = parseFloat(input.value);
   });
-  return vals;
+  return applyQualityPreset(process, vals);
+}
+
+function sliceCacheKey(sel, machine) {
+  return [
+    currentFileMeta && currentFileMeta.name,
+    currentFileMeta && currentFileMeta.bytes,
+    sel.process,
+    sel.material,
+    machine && machine.id,
+    sel.params && sel.params.quality,
+    sel.params && sel.params.infill,
+    sel.params && sel.params.layerHeight,
+  ].join('|');
+}
+
+function slicerStatusFor(sel, machine) {
+  if (engineCfg.slicer === 'cura') return 'Real slicer: unavailable - Cura/Kiri browser slicer disabled; use PrusaSlicer backend';
+  if (engineCfg.slicer !== 'prusaslicer') return null;
+  if (!engineCfg.slicerApi) return 'Real slicer: unavailable - missing slicerApi URL';
+  if (sel.process !== 'fdm') return 'Real slicer: FDM only';
+  if (!currentSliceMeshBuffer) return 'Real slicer: waiting for mesh';
+  if (currentSliceMeshBuffer.byteLength > SLICE_UPLOAD_LIMIT_BYTES) return 'Real slicer: unavailable - STL exceeds 50 MB service limit';
+  if (!machine || !machine.id) return 'Real slicer: waiting for machine';
+  const key = sliceCacheKey(sel, machine);
+  if (sliceProgress.has(key)) {
+    const p = sliceProgress.get(key);
+    const elapsed = Math.max(0, Math.round((performance.now() - p.startedAt) / 1000));
+    const budget = Math.round((p.budgetMs || SLICE_BUDGET_MS) / 1000);
+    return `Real slicer: ${p.stage} - ${elapsed}s / ${budget}s`;
+  }
+  if (slicePending.has(key)) return 'Real slicer: slicing...';
+  if (sliceCache.has(key) && sliceCache.get(key)) return 'Real slicer: PrusaSlicer sliced';
+  if (sliceCache.has(key)) return `Real slicer: failed${sliceErrors.get(key) ? ` (${sliceErrors.get(key)})` : ''}`;
+  return 'Real slicer: queued';
+}
+
+function setSliceProgress(key, stage, budgetMs = SLICE_BUDGET_MS) {
+  const prev = sliceProgress.get(key);
+  const update = typeof stage === 'object' && stage ? stage : { stage };
+  const prevProgress = prev && Number.isFinite(Number(prev.progress)) ? Number(prev.progress) : 0;
+  const nextProgress = Number.isFinite(Number(update.progress)) ? Number(update.progress) : prevProgress;
+  sliceProgress.set(key, {
+    stage: update.stage || update.state || 'slicing',
+    state: update.state || null,
+    progress: Math.max(prevProgress, nextProgress),
+    elapsedSec: Number.isFinite(Number(update.elapsedSec)) ? Number(update.elapsedSec) : null,
+    etaSec: Number.isFinite(Number(update.etaSec)) ? Number(update.etaSec) : null,
+    currentTrial: update.currentTrial || null,
+    totalTrials: update.totalTrials || null,
+    budgetMs,
+    startedAt: prev ? prev.startedAt : performance.now(),
+  });
+}
+
+function startSliceTicker() {
+  if (sliceTicker) return;
+  sliceTicker = setInterval(() => {
+    if (!slicePending.size) {
+      clearInterval(sliceTicker);
+      sliceTicker = null;
+      return;
+    }
+    if (currentAnalysis) updateQuote();
+  }, 1000);
+}
+
+function timeModelWithOptionalSlice(sel) {
+  return (features, process, params, machine) => {
+    const base = surrogateTimeModel(features, process, params, machine);
+    const cached = machine ? sliceCache.get(sliceCacheKey(sel, machine)) : null;
+    if (!cached) return base;
+    return {
+      ...(base || {}),
+      est_hours: cached.timeSec / 3600,
+      gramsModel: cached.gramsModel,
+      gramsSupport: cached.gramsSupport,
+      source: 'sliced',
+      slicer: cached.slicer || 'prusaslicer',
+      physicsEstHours: base && base.est_hours,
+      selectedOrientation: cached.selectedOrientation || null,
+      trials: cached.trials || [],
+      slicedMesh: cached.mesh || null,
+      orientationScore: cached.orientationScore || null,
+      analysis: cached.analysis || null,
+    };
+  };
+}
+
+function maybeStartSlicer(result, sel) {
+  if (!quoteRunRequested) return;
+  if (engineCfg.slicer !== 'prusaslicer' || !engineCfg.slicerApi) return;
+  if (!currentSliceMeshBuffer || sel.process !== 'fdm') return;
+  const machine = result.components && result.components.machine;
+  if (!machine || !machine.id) return;
+  const process = PROCESSES[sel.process];
+  const profile = (process.machines || []).find(m => m.id === machine.id);
+  if (!profile) return;
+
+  const key = sliceCacheKey(sel, profile);
+  if (sliceCache.has(key) || slicePending.has(key)) return;
+
+  if (currentSliceMeshBuffer.byteLength > SLICE_UPLOAD_LIMIT_BYTES) {
+    sliceCache.set(key, null);
+    sliceErrors.set(key, 'STL exceeds 50 MB service limit');
+    return;
+  }
+
+  slicePending.add(key);
+  sliceErrors.delete(key);
+  setSliceProgress(key, currentAnalysis && currentAnalysis.watertight === false ? 'starting with mesh warning' : 'queued', SLICE_BUDGET_MS);
+  startSliceTicker();
+
+  const meshCopy = currentSliceMeshBuffer.slice(0);
+  const runId = quoteRunId;
+  sliceMesh(meshCopy, { ...profile, processKey: sel.process }, sel.params, {
+    apiUrl: engineCfg.slicerApi,
+    budgetMs: SLICE_BUDGET_MS,
+    optimizeOrientation: true,
+    processProfile: process,
+    materialProfile: MATERIALS[sel.material],
+    onProgress: (msg) => {
+      if (runId !== quoteRunId) return;
+      setSliceProgress(key, msg, SLICE_BUDGET_MS);
+      if (currentAnalysis) updateQuote();
+    },
+  })
+    .then((sliced) => {
+      if (runId !== quoteRunId) return;
+      if (sliced && sliced.timeSec > 0) {
+        sliceCache.set(key, sliced);
+        sliceProgress.delete(key);
+      } else {
+        sliceCache.set(key, null);
+        if (sliced && sliced.error) sliceErrors.set(key, sliced.error);
+        sliceProgress.delete(key);
+      }
+    })
+    .catch((err) => {
+      if (runId !== quoteRunId) return;
+      sliceCache.set(key, null);
+      sliceErrors.set(key, err && err.message ? err.message : 'failed');
+      sliceProgress.delete(key);
+    })
+    .finally(() => {
+      if (runId !== quoteRunId) return;
+      slicePending.delete(key);
+      if (currentAnalysis) updateQuote();
+    });
+}
+
+function renderMachineOptions(result) {
+  if (!ui.fMachine || !result) return;
+  const c = result.components || {};
+  const options = c.machineOptions || [];
+  const selected = ui.fMachine.value;
+  const chosen = c.machine;
+  ui.fMachine.innerHTML = '';
+
+  const auto = document.createElement('option');
+  auto.value = '';
+  auto.textContent = chosen ? `${chosen.name} · auto` : 'Auto-select';
+  ui.fMachine.appendChild(auto);
+
+  options.forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt.id;
+    const fitLabel = opt.feasible ? 'fits' : (!opt.fits ? 'too large' : 'material mismatch');
+    o.textContent = `${opt.name} · ${fitLabel}`;
+    o.disabled = !opt.feasible;
+    ui.fMachine.appendChild(o);
+  });
+
+  const stillValid = selected && options.some(opt => opt.id === selected && opt.feasible);
+  ui.fMachine.value = stillValid ? selected : '';
+}
+
+function renderCenterSliceStatus({ manualReview, pct, stage, trial, elapsed, eta, machineName, slicerStatus }) {
+  if (!ui.sliceStatusPanel) return;
+  if (manualReview) {
+    ui.sliceStatusPanel.classList.add('hidden');
+    ui.sliceStatusPanel.innerHTML = '';
+    return;
+  }
+  ui.sliceStatusPanel.classList.remove('hidden');
+  ui.sliceStatusPanel.innerHTML = `
+    <div class="slice-title">Preparing manufacturable FDM quote</div>
+    <div class="slice-subtitle">Optimizing orientation and slicing on ${machineName}. The price will appear when PrusaSlicer returns a valid result.</div>
+    <div class="slice-progress" aria-label="Slicing progress"><div style="width:${pct}%"></div></div>
+    <div class="slice-meta">
+      <span><strong>${stage}</strong></span><span>${pct}%</span>
+      <span>${trial}</span><span>${[elapsed, eta].filter(Boolean).join(' · ')}</span>
+      <span>PrusaSlicer</span><span>${slicerStatus || 'queued'}</span>
+    </div>
+  `;
+}
+
+function clearSlicingState() {
+  sliceCache.clear();
+  slicePending.clear();
+  sliceErrors.clear();
+  sliceProgress.clear();
+  if (sliceTicker) { clearInterval(sliceTicker); sliceTicker = null; }
+  lastSlicerStatus = null;
+  if (ui.sliceStatusPanel) {
+    ui.sliceStatusPanel.classList.add('hidden');
+    ui.sliceStatusPanel.innerHTML = '';
+  }
+}
+
+function resetQuoteRun() {
+  quoteRunRequested = false;
+  quoteRunId += 1;
+  clearSlicingState();
+}
+
+function startQuoteRun() {
+  if (!currentAnalysis) return;
+  quoteRunRequested = true;
+  quoteRunId += 1;
+  clearSlicingState();
+  hideQuoteStartPanel();
+  updateQuote();
+}
+
+function hideQuoteStartPanel() {
+  if (ui.quoteStartPanel) ui.quoteStartPanel.classList.add('hidden');
+}
+
+function showQuoteStartPanel(sel, result, machineName) {
+  if (!ui.quoteStartPanel || !ui.quoteStartSummary || !ui.quoteStartBtn) return;
+  const process = PROCESSES[sel.process];
+  const material = MATERIALS[sel.material];
+  const qualitySpec = process && process.params && process.params.quality;
+  const quality = qualitySpec && Array.isArray(qualitySpec.options)
+    ? qualitySpec.options.find(o => o.value === sel.params.quality)
+    : null;
+  ui.quoteStartSummary.innerHTML = `
+    <span>Process<strong>${process?.name || sel.process}</strong></span>
+    <span>Material<strong>${material?.name || sel.material}</strong></span>
+    <span>Quality<strong>${quality?.label || sel.params.quality || 'Standard'}</strong></span>
+    <span>Machine<strong>${machineName}</strong></span>
+  `;
+  ui.quoteStartBtn.textContent = sel.process === 'fdm' ? 'Start slicing and quote' : 'Calculate quote';
+  ui.quoteStartPanel.classList.remove('hidden');
+}
+
+function renderQuoteSetupGate(sel, result, slicerStatus) {
+  const c = result.components || {};
+  const machineName = c.machine && c.machine.name ? c.machine.name : 'selected machine';
+  removeMeshFromScene();
+  ui.quoteHero.style.display = 'none';
+  ui.loadingPane.classList.add('hidden');
+  if (ui.sliceStatusPanel) {
+    ui.sliceStatusPanel.classList.add('hidden');
+    ui.sliceStatusPanel.innerHTML = '';
+  }
+  ui.readoutSection.style.display = 'block';
+  ui.configSection.style.display = 'block';
+  ui.breakdownSection.style.display = 'block';
+  ui.emptySide.style.display = 'none';
+  ui.statusChip.textContent = '● CONFIG';
+  ui.requestBtn.disabled = false;
+  ui.requestBtn.textContent = sel.process === 'fdm' ? 'Start slicing and quote' : 'Calculate quote';
+  ui.printBtn.disabled = true;
+  showQuoteStartPanel(sel, result, machineName);
+  ui.breakdown.innerHTML = `
+    <div class="row"><span>Quote status</span><span>configuration</span></div>
+    <div class="row"><span>Process</span><span>${PROCESSES[sel.process]?.name || sel.process}</span></div>
+    <div class="row"><span>Material</span><span>${MATERIALS[sel.material]?.name || sel.material}</span></div>
+    <div class="row"><span>Selected machine</span><span>${machineName}</span></div>
+    ${sel.process === 'fdm' ? `<div class="row"><span>PrusaSlicer</span><span>${slicerStatus || 'ready'}</span></div>` : ''}
+    <div class="row"><span>Price</span><span>not started</span></div>
+  `;
+  if (ui.sizeWarn) {
+    ui.sizeWarn.style.display = 'block';
+    ui.sizeWarn.textContent = 'Review the configuration, then start slicing and cost estimation.';
+  }
+  postHeight();
+}
+
+function renderFdmSlicingGate(sel, result, slicerStatus) {
+  const c = result.components || {};
+  const key = c.machine ? sliceCacheKey(sel, c.machine) : null;
+  const progress = key ? sliceProgress.get(key) : null;
+  const failed = !!(key && sliceCache.has(key) && !sliceCache.get(key));
+  const unavailable = !!(slicerStatus && /unavailable|failed/i.test(slicerStatus));
+  const manualReview = failed || unavailable;
+
+  hideQuoteStartPanel();
+  removeMeshFromScene();
+  ui.quoteHero.style.display = 'none';
+  ui.readoutSection.style.display = 'block';
+  ui.configSection.style.display = 'block';
+  ui.breakdownSection.style.display = 'block';
+  ui.emptySide.style.display = 'none';
+  ui.statusChip.textContent = manualReview ? '● REVIEW' : '● SLICING';
+  ui.loadingText.textContent = manualReview ? 'Manual review required' : 'Optimizing print orientation...';
+  ui.loadingPane.classList.toggle('hidden', manualReview);
+  ui.requestBtn.disabled = !manualReview;
+  ui.requestBtn.textContent = manualReview ? 'Request manual review' : 'Preparing manufacturable quote';
+  ui.printBtn.disabled = true;
+
+  const machineName = c.machine && c.machine.name ? c.machine.name : 'selected machine';
+  const pct = Math.round(Math.max(0, Math.min(1, progress && progress.progress != null ? progress.progress : 0.03)) * 100);
+  const elapsed = progress && progress.elapsedSec != null
+    ? `${Math.round(progress.elapsedSec)}s elapsed`
+    : '';
+  const eta = progress && progress.etaSec != null
+    ? `${Math.round(progress.etaSec)}s remaining`
+    : 'estimating remaining time';
+  const trial = progress && progress.totalTrials
+    ? `trial ${progress.currentTrial || 0}/${progress.totalTrials}`
+    : 'preparing trials';
+  const stage = progress && progress.stage ? progress.stage : (slicerStatus || 'Queued');
+  renderCenterSliceStatus({ manualReview, pct, stage, trial, elapsed, eta, machineName, slicerStatus });
+  ui.breakdown.innerHTML = `
+    <div class="row"><span>FDM quote status</span><span>${manualReview ? 'manual review' : 'slicing'}</span></div>
+    <div class="row"><span>Selected machine</span><span>${machineName}</span></div>
+    <div class="row"><span>PrusaSlicer</span><span>${slicerStatus || 'queued'}</span></div>
+    <div class="row"><span>Price</span><span>waiting for sliced result</span></div>
+  `;
+  if (ui.sizeWarn) {
+    ui.sizeWarn.style.display = manualReview ? 'block' : 'none';
+    ui.sizeWarn.textContent = manualReview
+      ? 'Automatic FDM quote is unavailable until this part can be sliced. Send it for manual review.'
+      : '';
+  }
+  postHeight();
 }
 
 function updateQuote() {
@@ -1406,6 +2144,7 @@ function updateQuote() {
   const sel = {
     process: processKey,
     material: ui.fMaterial.value,
+    machineId: ui.fMachine && ui.fMachine.value ? ui.fMachine.value : null,
     qty: ui.fQty.value,
     lead: getLead(),
     params: getProcessParamValues(processKey),
@@ -1414,15 +2153,45 @@ function updateQuote() {
   // (A process without a build block falls back to the legacy throughput model.)
   const result = computeAMQuote(a, sel, state, {
     parserConfidence: currentParserConfidence,
-    timeModel: surrogateTimeModel,
+    timeModel: timeModelWithOptionalSlice(sel),
   });
   lastResult = result;
   lastTotal = result.price;
+  renderMachineOptions(result);
 
   const c = result.components;
   const f = result.factors;
   const qty = result.quantity;
   const lead = sel.lead;
+  const slicerStatus = slicerStatusFor(sel, c.machine);
+  lastSlicerStatus = slicerStatus;
+  if (!quoteRunRequested) {
+    renderQuoteSetupGate(sel, result, slicerStatus);
+    return;
+  }
+  maybeStartSlicer(result, sel);
+  if (processKey === 'fdm' && c.buildTimeSource !== 'sliced') {
+    renderFdmSlicingGate(sel, result, slicerStatus);
+    return;
+  }
+  showGeometryOrientation(processKey === 'fdm' && c.selectedOrientation ? c.selectedOrientation.name : 'original');
+  hideQuoteStartPanel();
+  ui.quoteHero.style.display = 'block';
+  ui.loadingPane.classList.add('hidden');
+  if (ui.sliceStatusPanel) {
+    ui.sliceStatusPanel.classList.add('hidden');
+    ui.sliceStatusPanel.innerHTML = '';
+  }
+  ui.statusChip.textContent = '● QUOTED';
+  ui.requestBtn.disabled = false;
+  ui.requestBtn.textContent = 'Request supplier match';
+  ui.printBtn.disabled = false;
+  const physicsComparison = c.buildTimeSource === 'sliced' && c.machine
+    ? computeAMQuote(a, { ...sel, machineId: c.machine.id }, state, {
+        parserConfidence: currentParserConfidence,
+        timeModel: surrogateTimeModel,
+      })
+    : null;
 
   ui.rWeight.textContent = `${c.weight_g.toFixed(1)} g · ${material.name}`;
   ui.totalPrice.innerHTML = fmtPrice(result.price);
@@ -1434,17 +2203,80 @@ function updateQuote() {
   // Phase-1 rows appear only when the build-time surrogate supplied them (FDM/SLA support, post-proc).
   const supportRow = c.supportCost > 0
     ? `<div class="row"><span>Support material (${c.supportGrams.toFixed(1)} g)</span><span>${fmtPrice(c.supportCost)}</span></div>` : '';
+  const powderRefreshRow = c.powderRefreshCost > 0
+    ? `<div class="row"><span>Powder refresh allocation (${c.powderRefreshGrams.toFixed(1)} g)</span><span>${fmtPrice(c.powderRefreshCost)}</span></div>` : '';
   const postProcRow = c.postProcPerUnit > 0
     ? `<div class="row"><span>Post-processing</span><span>${fmtPrice(c.postProcPerUnit)}</span></div>` : '';
-  const machineNote = c.layerCount ? `${(c.est_hours*60).toFixed(0)} min · ${c.layerCount} layers @ ${fmtPrice(process.hourlyRate)}/h` : `${(c.est_hours*60).toFixed(0)} min @ ${fmtPrice(process.hourlyRate)}/h`;
+  const machine = c.machine || { name: process.name, ratePerHour: process.hourlyRate };
+  const machineRate = machine.ratePerHour ?? process.hourlyRate;
+  const sourceLabel = c.buildTimeSource === 'sliced'
+    ? 'sliced'
+    : c.modelKind === 'resin'
+      ? 'resin exposure model'
+      : c.modelKind === 'powder'
+        ? 'powder packing model'
+        : c.buildTimeSource === 'legacy' ? 'legacy estimate' : 'physics estimate';
+  const machineNote = c.layerCount
+    ? `${(c.est_hours*60).toFixed(0)} min · ${c.layerCount} layers @ ${fmtPrice(machineRate)}/h on ${machine.name} · ${sourceLabel}`
+    : `${(c.est_hours*60).toFixed(0)} min @ ${fmtPrice(machineRate)}/h on ${machine.name} · ${sourceLabel}`;
+  const cxTerms = c.complexity && c.complexity.terms
+    ? c.complexity.terms.filter(t => t.contribution > 0).slice(0, 3)
+    : [];
+  const complexityNote = cxTerms.length
+    ? ` <small>${cxTerms.map(t => `${t.label} +${t.contribution.toFixed(2)}`).join(' · ')}</small>`
+    : '';
+  const slicerStatusRow = slicerStatus
+    ? `<div class="row"><span>${slicerStatus}</span><span>${c.buildTimeSource === 'sliced' ? 'active' : 'fallback'}</span></div>`
+    : '';
+  const priceDelta = physicsComparison ? result.price - physicsComparison.price : 0;
+  const priceDeltaText = !physicsComparison || Math.abs(priceDelta) < 0.005
+    ? 'no price change'
+    : `${priceDelta > 0 ? '+' : '-'}${fmtPrice(Math.abs(priceDelta))}`;
+  const slicedComparisonRow = physicsComparison
+    ? `<div class="row"><span>Sliced comparison <small>physics ${(physicsComparison.components.est_hours*60).toFixed(0)} min to sliced ${(c.est_hours*60).toFixed(0)} min</small></span><span>${priceDeltaText}</span></div>`
+    : '';
+  const successfulTrials = (c.slicerTrials || []).filter(t => t && t.timeSec).slice(0, 3);
+  const trialNote = successfulTrials.length
+    ? ` <small>${successfulTrials.map(t => `${t.selected ? 'best ' : ''}${t.label || t.name}: ${(t.timeSec/60).toFixed(0)} min`).join(' Â· ')}</small>`
+    : '';
+  const orientationRow = c.selectedOrientation
+    ? `<div class="row"><span>Placement/orientation${trialNote}</span><span>${c.selectedOrientation.label || c.selectedOrientation.name}</span></div>`
+    : '';
+  const materialSourceRow = c.buildTimeSource === 'sliced'
+    ? `<div class="row"><span>Material source</span><span>${c.slicedMaterialGrams ? `sliced ${c.slicedMaterialGrams.toFixed(1)} g` : 'physics estimate kept'}</span></div>`
+    : '';
+  const resinModelRow = c.modelKind === 'resin'
+    ? `<div class="row"><span>Resin exposure model <small>${c.bottomLayers || 0} bottom layers · ${Number(c.resinLayerTimeSec || 0).toFixed(1)}s exposure · ${Number(c.deadTimeSec || 0).toFixed(1)}s peel/dead</small></span><span>active</span></div>`
+    : '';
+  const powderModelRow = c.modelKind === 'powder'
+    ? `<div class="row"><span>Powder packing model <small>${((c.packingDensity || 0) * 100).toFixed(0)}% packing · ${((c.occupancyShare || 0) * 100).toFixed(1)}% build share</small></span><span>${c.fullBuildHours ? `${c.fullBuildHours.toFixed(1)}h full build` : 'active'}</span></div>`
+    : '';
+  const analysis = c.analysis || currentQuality;
+  const quality = analysis && analysis.quality ? analysis.quality : {};
+  const risks = analysis && analysis.risks ? analysis.risks : {};
+  const qualityRows = analysis ? `
+    <div class="row"><span>Model quality <small>advisory analysis</small></span><span>${quality.watertight === false ? 'review' : 'checked'}</span></div>
+    <div class="row"><span>Shells / connected models</span><span>${quality.shellCount ?? '—'} / ${risks.groupedModels ?? '—'}</span></div>
+    <div class="row"><span>Bad edges</span><span>${quality.badEdges ?? '—'}</span></div>
+    <div class="row"><span>Print risks</span><span>thin ${risks.thinWalls ?? '—'} · bridges ${risks.bridgeFaces ?? '—'} · overhangs ${risks.overhangFaces ?? '—'}</span></div>
+    <div class="risk-legend"><span class="safe">Secure</span><span class="warn-risk">Support/suboptimal</span><span class="bad-risk">Thin/open risk</span></div>
+  ` : '';
 
   ui.breakdown.innerHTML = `
     <div class="row"><span>Material (${material.name})</span><span>${fmtPrice(c.materialCost)}</span></div>
+    ${materialSourceRow}
     ${supportRow}
+    ${powderRefreshRow}
     <div class="row"><span>Machine time (${machineNote})</span><span>${fmtPrice(c.machineCost)}</span></div>
+    ${resinModelRow}
+    ${powderModelRow}
+    ${slicerStatusRow}
+    ${slicedComparisonRow}
+    ${orientationRow}
+    ${qualityRows}
     <div class="row"><span>Setup fee${qty > 1 ? ` (${fmtPrice(c.setupFee)} ÷ ${qty})` : ''}</span><span>${fmtPrice(c.setupPerUnit)}</span></div>
     ${postProcRow}
-    ${f.complexity !== 1 ? `<div class="row"><span>Complexity (machine time)</span><span>×${f.complexity.toFixed(2)}</span></div>` : ''}
+    ${f.complexity !== 1 ? `<div class="row"><span>Geometry complexity${complexityNote}</span><span>×${f.complexity.toFixed(2)}</span></div>` : ''}
     ${modifierRows}
     <div class="row"><span>Overhead + margin</span><span>×${((1 + (f.overheadPct||0)/100) * (1 + (f.marginPct||0)/100)).toFixed(2)}</span></div>
     <div class="row"><span>Lead time${f.leadMult > 1 ? ' (conversion only)' : ''}</span><span>${f.leadMult > 1 ? `×${f.leadMult.toFixed(2)}` : '—'}</span></div>
@@ -1457,8 +2289,18 @@ function updateQuote() {
   emitQuoteGenerated(result);
   postHeight();
 
+  if (ui.sizeWarn) {
+    const machineIssue = (result.reviewReasons || []).find(r => /machine|envelope|splitting|split/i.test(r));
+    if (machineIssue) {
+      ui.sizeWarn.style.display = 'block';
+      ui.sizeWarn.textContent = machineIssue;
+    } else {
+      ui.sizeWarn.style.display = 'none';
+    }
+  }
+
   // Build-volume sanity check (orientation-independent: compare sorted part dims to envelope)
-  const env = PROCESS_ENVELOPES[processKey];
+  const env = null;
   if (env && ui.sizeWarn) {
     const part = [a.bbox_mm.x, a.bbox_mm.y, a.bbox_mm.z].sort((x, y) => y - x);
     const cap = [...env].sort((x, y) => y - x);
@@ -1482,6 +2324,7 @@ function renderProcessParams() {
   if (!process || !process.params) return;
 
   Object.entries(process.params).forEach(([pKey, spec]) => {
+    if (spec.hidden) return;
     const field = document.createElement('div');
     field.className = 'field';
     const id = `pp-${processKey}-${pKey}`;
@@ -1498,7 +2341,7 @@ function renderProcessParams() {
         if (opt.value === spec.default) o.selected = true;
         sel.appendChild(o);
       });
-      sel.addEventListener('change', updateQuote);
+      sel.addEventListener('change', () => { resetQuoteRun(); updateQuote(); });
       field.appendChild(sel);
     } else {
       const inp = document.createElement('input');
@@ -1506,19 +2349,32 @@ function renderProcessParams() {
       inp.id = id;
       inp.min = spec.min; inp.max = spec.max; inp.step = spec.step;
       inp.value = spec.default;
-      inp.addEventListener('input', updateQuote);
+      inp.addEventListener('input', () => { resetQuoteRun(); updateQuote(); });
       field.appendChild(inp);
     }
     host.appendChild(field);
   });
 }
 
-ui.fUnits.addEventListener('change', applyUnits);
-ui.fProcess.addEventListener('change', () => { populateMaterials(); renderProcessParams(); updateQuote(); });
-ui.fMaterial.addEventListener('change', updateQuote);
-ui.fQty.addEventListener('input', updateQuote);
+ui.fUnits.addEventListener('change', () => { resetQuoteRun(); applyUnits(); });
+ui.fProcess.addEventListener('change', () => {
+  resetQuoteRun();
+  if (ui.fMachine) ui.fMachine.value = '';
+  populateMaterials();
+  renderProcessParams();
+  updateQuote();
+});
+ui.fMaterial.addEventListener('change', () => {
+  resetQuoteRun();
+  if (ui.fMachine) ui.fMachine.value = '';
+  updateQuote();
+});
+if (ui.fMachine) ui.fMachine.addEventListener('change', () => { resetQuoteRun(); updateQuote(); });
+if (ui.quoteStartBtn) ui.quoteStartBtn.addEventListener('click', startQuoteRun);
+ui.fQty.addEventListener('input', () => { resetQuoteRun(); updateQuote(); });
 ui.fLead.querySelectorAll('button').forEach(b => {
   b.addEventListener('click', () => {
+    resetQuoteRun();
     ui.fLead.querySelectorAll('button').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     updateQuote();
@@ -1529,6 +2385,15 @@ ui.fLead.querySelectorAll('button').forEach(b => {
 function resetToUpload() {
   currentAnalysis = null;
   currentFilename = null;
+  currentGeometry = null;
+  displayedOrientation = null;
+  currentQuality = null;
+  currentSliceMeshBuffer = null;
+  sliceCache.clear();
+  slicePending.clear();
+  sliceErrors.clear();
+  sliceProgress.clear();
+  if (sliceTicker) { clearInterval(sliceTicker); sliceTicker = null; }
   if (currentMesh) {
     scene.remove(currentMesh);
     currentMesh.geometry.dispose();
@@ -1538,6 +2403,11 @@ function resetToUpload() {
   ui.fileInput.value = '';
   ui.uploadPane.classList.remove('hidden');
   ui.loadingPane.classList.add('hidden');
+  hideQuoteStartPanel();
+  if (ui.sliceStatusPanel) {
+    ui.sliceStatusPanel.classList.add('hidden');
+    ui.sliceStatusPanel.innerHTML = '';
+  }
   ui.fileChip.style.display = 'none';
   ui.resetBtn.style.display = 'none';
   ui.viewerHint.style.display = 'none';
@@ -1579,7 +2449,16 @@ function closeLeadModal() {
   ui.leadModal.classList.remove('show');
   ui.leadModal.setAttribute('aria-hidden', 'true');
 }
-ui.requestBtn.addEventListener('click', openLeadModal);
+function handlePrimaryAction() {
+  if (!currentAnalysis) return;
+  if (!quoteRunRequested) {
+    startQuoteRun();
+    return;
+  }
+  openLeadModal();
+}
+
+ui.requestBtn.addEventListener('click', handlePrimaryAction);
 ui.leadClose.addEventListener('click', closeLeadModal);
 ui.leadModal.addEventListener('click', (e) => { if (e.target === ui.leadModal) closeLeadModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ui.leadModal.classList.contains('show')) closeLeadModal(); });
@@ -1646,6 +2525,8 @@ function setActiveTab(target) {
   if (stPane) stPane.classList.toggle('active', target === 'settings');
   const main = document.querySelector('main');
   main.classList.toggle('settings-active', target === 'settings');
+  if (target === 'settings') hideQuoteStartPanel();
+  else if (currentAnalysis && !quoteRunRequested) updateQuote();
   if (target === 'settings') renderSettings();
   setTimeout(resize, 300);
 }
@@ -1709,6 +2590,19 @@ function renderSettings() {
           <input type="number" id="${id}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${spec.default}">
         </div>`;
     }).join('') : '';
+    const machineRows = (p.machines || []).map(m => `
+      <tr data-process="${pKey}" data-machine="${m.id}">
+        <td>${m.name}<input type="hidden" class="mach-id" value="${m.id}"></td>
+        <td><input type="number" step="1" min="0" class="mach-rate" value="${m.ratePerHour ?? p.hourlyRate}"></td>
+        <td><input type="number" step="1" min="1" class="mach-env-x" value="${m.envelope?.x ?? p.envelope?.x ?? 0}"></td>
+        <td><input type="number" step="1" min="1" class="mach-env-y" value="${m.envelope?.y ?? p.envelope?.y ?? 0}"></td>
+        <td><input type="number" step="1" min="1" class="mach-env-z" value="${m.envelope?.z ?? p.envelope?.z ?? 0}"></td>
+        <td><input type="number" step="0.5" min="0.1" class="mach-flow" value="${m.build?.volumetricFlow_mm3ps ?? p.build?.volumetricFlow_mm3ps ?? 10}"></td>
+        <td><input type="number" step="0.1" min="0" class="mach-layer" value="${m.build?.layerOverheadSec ?? p.build?.layerOverheadSec ?? 0}"></td>
+        <td><input type="number" step="0.01" min="0" max="1" class="mach-support" value="${m.build?.supportFraction ?? p.build?.supportFraction ?? 0}"></td>
+        <td><input type="text" class="mach-materials" value="${(m.materials || []).join(',')}"></td>
+      </tr>
+    `).join('');
 
     return `
       <div class="settings-section">
@@ -1724,7 +2618,7 @@ function renderSettings() {
               <input type="number" step="1" min="0" id="s-${pKey}-setup" value="${p.setupFee}">
             </div>
             <div class="field">
-              <label>Complexity factor</label>
+              <label>Complexity override</label>
               <input type="number" step="0.05" min="1" max="3" id="s-${pKey}-cx" value="${p.complexity}">
             </div>
             <div class="field">
@@ -1733,6 +2627,12 @@ function renderSettings() {
             </div>
             ${paramFields}
           </div>
+          <table class="mats-table" style="margin-top:14px;">
+            <thead><tr>
+              <th>Machine</th><th>Rate/h</th><th>X</th><th>Y</th><th>Z</th><th>Flow</th><th>Layer sec</th><th>Support</th><th>Materials</th>
+            </tr></thead>
+            <tbody>${machineRows}</tbody>
+          </table>
         </div>
       </div>
     `;
@@ -1772,14 +2672,16 @@ function renderSettings() {
   C_setup = S ⁄ q              one-time setup amortised over qty q
   C_post  = p_unit             post-processing per part
 
-<span class="eqhead">Build time — Layer 1 surrogate (FDM · SLA · SLS)</span>
-  t_build = [ (V_dep + V_sup) ⁄ Q̇ + n_layer · τ_layer ] ⁄ 3600   [h]
+<span class="eqhead">Build time — process-correct surrogate</span>
+  FDM: t_build = [ (V_dep + V_sup) ⁄ Q̇ + n_layer · τ_layer ] ⁄ 3600
+  SLA: t_build = bottom exposure + normal exposure + lift/peel dead time
+  SLS: t_build = full powder build time · bbox occupancy share
   n_layer = ⌈ z_bbox ⁄ h_layer ⌉ ,   V_dep = V · ƒ_fill
   ƒ_fill  = 0.15 + 0.85 · (infill ⁄ 100)
 
 <span class="eqhead">Price — Layer 4 (business rules)</span>
   C_unit  = C_should · D_qty · M_lead       C_total = C_unit · q</pre>
-      <div class="legend">V volume (mm³) · ρ density (g/cm³) · c_g effective material price (SAR/g) · R_hr machine rate (SAR/h) · Q̇ deposition rate (mm³/s) · τ_layer per-layer overhead (s) · ƒ_fill infill factor · D_qty quantity multiplier · M_lead lead-time multiplier · k_cx complexity · S setup fee · q quantity.</div>
+      <div class="legend">V volume (mm³) · ρ density (g/cm³) · c_g effective material price (SAR/g) · R_hr machine rate (SAR/h) · ƒ_fill infill factor · M_lead lead-time multiplier · k_cx complexity · S setup fee · q quantity.</div>
     </div>`;
 
   body.innerHTML = costModelHTML + generalHTML + processesHTML + matsHTML;
@@ -1836,6 +2738,28 @@ function collectSettings() {
     p.setupFee   = parseFloat(document.getElementById(`s-${pKey}-setup`).value) || 0;
     p.complexity = parseFloat(document.getElementById(`s-${pKey}-cx`).value) || 1.0;
     p.mmPerHour  = parseFloat(document.getElementById(`s-${pKey}-speed`).value) || 1000;
+    if (Array.isArray(p.machines)) {
+      p.machines = p.machines.map(m => {
+        const tr = document.querySelector(`tr[data-process="${pKey}"][data-machine="${m.id}"]`);
+        if (!tr) return m;
+        return {
+          ...m,
+          ratePerHour: parseFloat(tr.querySelector('.mach-rate').value) || 0,
+          envelope: {
+            x: parseFloat(tr.querySelector('.mach-env-x').value) || 0,
+            y: parseFloat(tr.querySelector('.mach-env-y').value) || 0,
+            z: parseFloat(tr.querySelector('.mach-env-z').value) || 0,
+          },
+          materials: tr.querySelector('.mach-materials').value.split(',').map(s => s.trim()).filter(Boolean),
+          build: {
+            ...(m.build || {}),
+            volumetricFlow_mm3ps: parseFloat(tr.querySelector('.mach-flow').value) || 10,
+            layerOverheadSec: parseFloat(tr.querySelector('.mach-layer').value) || 0,
+            supportFraction: parseFloat(tr.querySelector('.mach-support').value) || 0,
+          },
+        };
+      });
+    }
     if (p.params) {
       Object.keys(p.params).forEach(kKey => {
         const el = document.getElementById(`s-${pKey}-default-${kKey}`);

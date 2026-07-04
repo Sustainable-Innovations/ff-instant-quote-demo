@@ -16,6 +16,18 @@
     "leadDays": { "standard": 7, "express": 3 },
     "minOrder": 20.0,
     "learningRate": 1.0,
+    "complexityModel": {
+      "cap": 1.3,
+      "baselineSaV": 0.6,
+      "baselineSupportFraction": 0.15,
+      "wOverhang": 0.08,
+      "wThin": 0.06,
+      "wAspect": 0.06,
+      "wHoles": 0.05,
+      "wOpen": 0.08,
+      "holeCap": 4,
+      "reviewThreshold": 1.25
+    },
     "_pricingNote": "Canonical model: variable cost (material+machine) is constant per unit; only setup amortises with qty (no blanket discount). marginPct/overheadPct per process; complexity scales machine TIME only. learningRate (<1) applies a Wright curve to post-processing labor; 1.0 = neutral. minOrder floors the order. qtyTiers retained for reference only — NOT used by the kernel."
   },
   "materials": {
@@ -36,9 +48,43 @@
       "baseLayerHeight": 0.2,
       "envelope": { "x": 300, "y": 300, "z": 300 },
       "build": { "volumetricFlow_mm3ps": 8, "layerOverheadSec": 6, "supportFraction": 0.12, "postProcPerUnit": 2.0 },
+      "machines": [
+        {
+          "id": "fdm-prusa-mk4",
+          "name": "Prusa MK4",
+          "ratePerHour": 15.0,
+          "envelope": { "x": 250, "y": 210, "z": 220 },
+          "materials": ["pla", "petg", "abs", "asa", "flex_tpu", "nylon_fdm"],
+          "build": { "volumetricFlow_mm3ps": 8, "layerOverheadSec": 6, "supportFraction": 0.12, "postProcPerUnit": 2.0 },
+          "quality": 1.0
+        },
+        {
+          "id": "fdm-bambu-x1c",
+          "name": "Bambu Lab X1-C",
+          "ratePerHour": 18.0,
+          "envelope": { "x": 256, "y": 256, "z": 256 },
+          "materials": ["pla", "petg", "abs", "asa", "flex_tpu"],
+          "build": { "volumetricFlow_mm3ps": 24, "layerOverheadSec": 3.5, "supportFraction": 0.12, "postProcPerUnit": 2.0 },
+          "quality": 1.0
+        },
+        {
+          "id": "fdm-modix-big60",
+          "name": "Modix Big-60 (large format)",
+          "ratePerHour": 28.0,
+          "envelope": { "x": 600, "y": 600, "z": 660 },
+          "materials": ["pla", "petg", "abs", "asa"],
+          "build": { "volumetricFlow_mm3ps": 14, "layerOverheadSec": 9, "supportFraction": 0.12, "postProcPerUnit": 2.0 },
+          "quality": 0.95
+        }
+      ],
       "params": {
+        "quality":     { "label": "Print quality", "type": "select", "default": "standard", "options": [
+          { "value": "draft", "label": "Draft - faster", "layerHeight": 0.28 },
+          { "value": "standard", "label": "Standard", "layerHeight": 0.20 },
+          { "value": "fine", "label": "Fine - smoother", "layerHeight": 0.12 }
+        ] },
         "infill":      { "label": "Infill",       "unit": "%",  "min": 10,   "max": 100,  "step": 5,    "default": 20 },
-        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.10, "max": 0.40, "step": 0.05, "default": 0.20 }
+        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.10, "max": 0.40, "step": 0.05, "default": 0.20, "hidden": true }
       }
     },
     "sla": {
@@ -46,9 +92,43 @@
       "hourlyRate": 28.0, "setupFee": 22.5, "complexity": 1.0, "overheadPct": 0, "marginPct": 25, "mmPerHour": 9000,
       "baseLayerHeight": 0.05,
       "envelope": { "x": 200, "y": 200, "z": 250 },
-      "build": { "volumetricFlow_mm3ps": 40, "layerOverheadSec": 7, "supportFraction": 0.15, "postProcPerUnit": 3.0 },
+      "build": { "kind": "resin", "layerTimeSec": 4.0, "deadTimeSec": 7.0, "bottomLayers": 5, "bottomExposureMult": 4.0, "supportFraction": 0.15, "laserTraceFactor": 0.08, "postProcPerUnit": 3.0 },
+      "machines": [
+        {
+          "id": "sla-elegoo-saturn",
+          "name": "Elegoo Saturn",
+          "ratePerHour": 18.0,
+          "envelope": { "x": 219, "y": 123, "z": 250 },
+          "materials": ["resin_std"],
+          "build": { "kind": "resin", "layerTimeSec": 2.2, "deadTimeSec": 5.5, "bottomLayers": 5, "bottomExposureMult": 4.0, "supportFraction": 0.15, "laserTraceFactor": 0.0, "postProcPerUnit": 3.0 },
+          "quality": 0.9
+        },
+        {
+          "id": "sla-formlabs-form3-plus",
+          "name": "Formlabs Form 3+",
+          "ratePerHour": 28.0,
+          "envelope": { "x": 145, "y": 145, "z": 185 },
+          "materials": ["resin_std", "resin_tough"],
+          "build": { "kind": "resin", "layerTimeSec": 4.0, "deadTimeSec": 7.0, "bottomLayers": 5, "bottomExposureMult": 4.0, "supportFraction": 0.16, "laserTraceFactor": 0.08, "postProcPerUnit": 3.0 },
+          "quality": 1.0
+        },
+        {
+          "id": "sla-formlabs-form3l",
+          "name": "Formlabs Form 3L",
+          "ratePerHour": 42.0,
+          "envelope": { "x": 335, "y": 200, "z": 300 },
+          "materials": ["resin_std", "resin_tough"],
+          "build": { "kind": "resin", "layerTimeSec": 4.2, "deadTimeSec": 8.0, "bottomLayers": 5, "bottomExposureMult": 4.0, "supportFraction": 0.16, "laserTraceFactor": 0.08, "postProcPerUnit": 3.5 },
+          "quality": 1.0
+        }
+      ],
       "params": {
-        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.025, "max": 0.10, "step": 0.005, "default": 0.05 }
+        "quality":     { "label": "Print quality", "type": "select", "default": "standard", "options": [
+          { "value": "draft", "label": "Draft - faster", "layerHeight": 0.10 },
+          { "value": "standard", "label": "Standard", "layerHeight": 0.05 },
+          { "value": "fine", "label": "Fine - smoother", "layerHeight": 0.025 }
+        ] },
+        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.025, "max": 0.10, "step": 0.005, "default": 0.05, "hidden": true }
       }
     },
     "sls": {
@@ -56,9 +136,34 @@
       "hourlyRate": 45.0, "setupFee": 56.0, "complexity": 1.0, "overheadPct": 0, "marginPct": 20, "mmPerHour": 11000,
       "baseLayerHeight": 0.12,
       "envelope": { "x": 200, "y": 200, "z": 330 },
-      "build": { "volumetricFlow_mm3ps": 25, "layerOverheadSec": 5, "supportFraction": 0.0, "postProcPerUnit": 2.5 },
+      "build": { "kind": "powder", "chamber": { "x": 200, "y": 200, "z": 330 }, "layerTimeSec": 9.0, "layerHeight": 0.12, "packingDensity": 0.10, "powderRefreshFraction": 0.5, "postProcPerUnit": 2.5 },
+      "machines": [
+        {
+          "id": "sls-formlabs-fuse1-plus",
+          "name": "Formlabs Fuse 1+",
+          "ratePerHour": 45.0,
+          "envelope": { "x": 165, "y": 165, "z": 300 },
+          "materials": ["nylon_sls"],
+          "build": { "kind": "powder", "chamber": { "x": 165, "y": 165, "z": 300 }, "layerTimeSec": 9.0, "layerHeight": 0.11, "packingDensity": 0.10, "powderRefreshFraction": 0.5, "postProcPerUnit": 2.5 },
+          "quality": 1.0
+        },
+        {
+          "id": "sls-eos-p396",
+          "name": "EOS P396",
+          "ratePerHour": 85.0,
+          "envelope": { "x": 340, "y": 340, "z": 600 },
+          "materials": ["nylon_sls"],
+          "build": { "kind": "powder", "chamber": { "x": 340, "y": 340, "z": 600 }, "layerTimeSec": 8.0, "layerHeight": 0.12, "packingDensity": 0.12, "powderRefreshFraction": 0.45, "postProcPerUnit": 3.5 },
+          "quality": 1.0
+        }
+      ],
       "params": {
-        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.08, "max": 0.20, "step": 0.01, "default": 0.12 }
+        "quality":     { "label": "Print quality", "type": "select", "default": "standard", "options": [
+          { "value": "draft", "label": "Draft - faster", "layerHeight": 0.16 },
+          { "value": "standard", "label": "Standard", "layerHeight": 0.12 },
+          { "value": "fine", "label": "Fine - smoother", "layerHeight": 0.08 }
+        ] },
+        "layerHeight": { "label": "Layer height", "unit": "mm", "min": 0.08, "max": 0.20, "step": 0.01, "default": 0.12, "hidden": true }
       }
     }
   }

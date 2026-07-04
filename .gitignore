@@ -21,6 +21,8 @@ desktop.ini
 node_modules/
 dist/
 .cache/
+__pycache__/
+*.py[cod]
 
 # local test fixtures (not committed)
 .testdata/

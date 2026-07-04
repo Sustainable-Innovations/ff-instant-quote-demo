@@ -10,8 +10,12 @@ import { readFileSync } from 'node:fs';
 
 import { computeAMQuote } from '../../quote-3d/quote.kernel.js';
 import { surrogateTimeModel } from '../../quote-3d/slicer/fallback.estimate.js';
+import { sliceMesh } from '../../quote-3d/slicer/slicer.bridge.js';
 import { computePCBQuote } from '../../quote-pcb/quote.kernel.js';
 import { computeLaserQuote } from '../../quote-laser/quote.kernel.js';
+import { autoComplexity } from '../complexity.js';
+import { analyzeMeshQuality } from '../mesh-quality.js';
+import { quoteGeneratedEvent } from '../capture.js';
 import { metricsFromContours } from '../../quote-laser/parse/geom.metrics.js';
 import { fastYield } from '../../quote-laser/nest/nest.fast.js';
 import { refineYield } from '../../quote-laser/nest/nest.truenshape.js';
@@ -71,7 +75,7 @@ test('AM qty=1 (standard) price preserved exactly vs legacy', () => {
   approx(got.price, legacyAM(FDM1.features, FDM1.sel, fdm).total, 1e-9);
   approx(got.price, FDM1.goldenTotal, 1e-6);
   // SLA qty=1 standard also preserved (complexity 1.25 → marginPct 25)
-  const slaSel = { process: 'sla', material: 'resin_std', qty: 1, lead: 'standard', params: { layerHeight: 0.025 } };
+  const slaSel = { process: 'sla', material: 'resin_std', qty: 1, lead: 'standard', machineId: 'sla-formlabs-form3-plus', params: { layerHeight: 0.025 } };
   const slaFeat = { volume_mm3: 8000, surface_mm2: 5000, bbox_mm: { x: 30, y: 30, z: 15 }, watertight: true };
   approx(computeAMQuote(slaFeat, slaSel, fdm).price, legacyAM(slaFeat, slaSel, fdm).total, 1e-9);
   assert.ok(got.breakdown.length >= 3);
@@ -176,7 +180,7 @@ test('Phase-1 FDM surrogate: legacy path unchanged, surrogate is layer-aware', (
 
   // golden anchor for the surrogate (locks the model coefficients)
   const cube = { volume_mm3: 10000, surface_mm2: 6000, bbox_mm: { x: 20, y: 20, z: 25 }, watertight: true };
-  const sCube = computeAMQuote(cube, sel, fdm, { timeModel: surrogateTimeModel });
+  const sCube = computeAMQuote(cube, { ...sel, machineId: 'fdm-prusa-mk4' }, fdm, { timeModel: surrogateTimeModel });
   approx(sCube.price, 23.518845, 1e-3);
 
   // when a timeModel returns null (process with no build block), the kernel must fall
@@ -184,6 +188,215 @@ test('Phase-1 FDM surrogate: legacy path unchanged, surrogate is layer-aware', (
   const legacyFdm = computeAMQuote(cube, sel, fdm);
   const fallbackFdm = computeAMQuote(cube, sel, fdm, { timeModel: () => null });
   approx(fallbackFdm.price, legacyFdm.price, 1e-9);
+});
+
+test('SLA resin model is layer/exposure driven', () => {
+  const baseSel = { process: 'sla', material: 'resin_std', qty: 1, lead: 'standard', machineId: 'sla-elegoo-saturn', params: { quality: 'standard', layerHeight: 0.05 } };
+  const narrow = { volume_mm3: 20000, surface_mm2: 8000, bbox_mm: { x: 20, y: 20, z: 50 }, watertight: true, genus: 0 };
+  const wide = { volume_mm3: 80000, surface_mm2: 18000, bbox_mm: { x: 80, y: 80, z: 50 }, watertight: true, genus: 0 };
+  const short = { volume_mm3: 100000, surface_mm2: 20000, bbox_mm: { x: 100, y: 100, z: 10 }, watertight: true, genus: 0 };
+  const tall = { volume_mm3: 100000, surface_mm2: 22000, bbox_mm: { x: 20, y: 20, z: 250 }, watertight: true, genus: 0 };
+
+  const qNarrow = computeAMQuote(narrow, baseSel, fdm, { timeModel: surrogateTimeModel });
+  const qWide = computeAMQuote(wide, baseSel, fdm, { timeModel: surrogateTimeModel });
+  approx(qNarrow.components.est_hours, qWide.components.est_hours, 0.01);
+  assert.equal(qNarrow.components.modelKind, 'resin');
+  assert.ok(qNarrow.breakdown.some((b) => b.key === 'support'), 'SLA keeps support material row');
+
+  const qShort = computeAMQuote(short, baseSel, fdm, { timeModel: surrogateTimeModel });
+  const qTall = computeAMQuote(tall, baseSel, fdm, { timeModel: surrogateTimeModel });
+  assert.ok(qTall.components.est_hours > qShort.components.est_hours, 'taller resin part takes more layers');
+
+  const draft = computeAMQuote(short, { ...baseSel, params: { quality: 'draft', layerHeight: 0.10 } }, fdm, { timeModel: surrogateTimeModel });
+  const fine = computeAMQuote(short, { ...baseSel, params: { quality: 'fine', layerHeight: 0.025 } }, fdm, { timeModel: surrogateTimeModel });
+  assert.ok(fine.components.est_hours > draft.components.est_hours, 'fine SLA quality costs more time than draft');
+});
+
+test('SLS powder model prices packing and powder refresh', () => {
+  const sel = { process: 'sls', material: 'nylon_sls', qty: 1, lead: 'standard', machineId: 'sls-formlabs-fuse1-plus', params: { quality: 'standard', layerHeight: 0.12 } };
+  const dense = { volume_mm3: 8000, surface_mm2: 3000, bbox_mm: { x: 20, y: 20, z: 20 }, watertight: true, genus: 0 };
+  const sparse = { volume_mm3: 8000, surface_mm2: 6000, bbox_mm: { x: 40, y: 40, z: 40 }, watertight: true, genus: 0 };
+
+  const qDense = computeAMQuote(dense, sel, fdm, { timeModel: surrogateTimeModel });
+  const qSparse = computeAMQuote(sparse, sel, fdm, { timeModel: surrogateTimeModel });
+  assert.equal(qDense.components.modelKind, 'powder');
+  assert.ok(!qDense.breakdown.some((b) => b.key === 'support'), 'SLS has no support material row');
+  assert.ok(qSparse.breakdown.some((b) => b.key === 'powder-refresh'), 'SLS exposes powder refresh allocation');
+  assert.ok(qSparse.components.machineCost > qDense.components.machineCost, 'larger bbox uses more packed build share');
+  assert.ok(qSparse.components.powderRefreshCost > qDense.components.powderRefreshCost, 'larger bbox allocates more refresh powder');
+
+  const tuned = JSON.parse(JSON.stringify(fdm));
+  const fuse = tuned.processes.sls.machines.find((m) => m.id === 'sls-formlabs-fuse1-plus');
+  fuse.build.packingDensity = 0.25;
+  const qPacked = computeAMQuote(sparse, sel, tuned, { timeModel: surrogateTimeModel });
+  assert.ok(qPacked.components.machineCost < qSparse.components.machineCost, 'higher packing density lowers machine share');
+});
+
+test('AM build.kind dispatch keeps old coefficient fallback', () => {
+  const old = JSON.parse(JSON.stringify(fdm));
+  old.processes.sla.build = { volumetricFlow_mm3ps: 40, layerOverheadSec: 7, supportFraction: 0.15, postProcPerUnit: 3.0 };
+  old.processes.sla.machines = old.processes.sla.machines.map((m) => ({
+    ...m,
+    build: { volumetricFlow_mm3ps: 40, layerOverheadSec: 7, supportFraction: 0.15, postProcPerUnit: 3.0 },
+  }));
+  const feat = { volume_mm3: 8000, surface_mm2: 5000, bbox_mm: { x: 30, y: 30, z: 15 }, watertight: true, genus: 0 };
+  const q = computeAMQuote(feat, { process: 'sla', material: 'resin_std', qty: 1, lead: 'standard', machineId: 'sla-formlabs-form3-plus', params: { layerHeight: 0.05 } }, old, { timeModel: surrogateTimeModel });
+  assert.equal(q.components.modelKind, 'fdm');
+  assert.ok(q.components.supportCost > 0, 'legacy SLA-shaped coefficients still use old support proxy');
+});
+
+test('AM machine profiles: auto-select, override, material filtering, and oversized review', () => {
+  const feat = { volume_mm3: 10000, surface_mm2: 6000, bbox_mm: { x: 20, y: 20, z: 25 }, watertight: true, genus: 0 };
+  const base = { process: 'fdm', material: 'pla', qty: 1, lead: 'standard', params: { infill: 20, layerHeight: 0.2 } };
+
+  const auto = computeAMQuote(feat, base, fdm, { timeModel: surrogateTimeModel });
+  assert.equal(auto.components.machine.id, 'fdm-bambu-x1c', 'fast Bambu profile is cheapest for a small PLA part');
+  assert.ok(auto.components.machineAlternatives.length >= 2, 'alternatives returned');
+
+  const override = computeAMQuote(feat, { ...base, machineId: 'fdm-prusa-mk4' }, fdm, { timeModel: surrogateTimeModel });
+  assert.equal(override.components.machine.id, 'fdm-prusa-mk4', 'feasible override is respected');
+  assert.ok(override.unitPrice > auto.unitPrice, 'override can choose a non-cheapest machine');
+
+  const nylon = computeAMQuote(feat, { ...base, material: 'nylon_fdm' }, fdm, { timeModel: surrogateTimeModel });
+  assert.equal(nylon.components.machine.id, 'fdm-prusa-mk4', 'material filter excludes Bambu for nylon_fdm');
+
+  const large = { volume_mm3: 5e6, surface_mm2: 5e5, bbox_mm: { x: 300, y: 300, z: 300 }, watertight: true, genus: 0 };
+  const routedLarge = computeAMQuote(large, base, fdm, { timeModel: surrogateTimeModel });
+  assert.equal(routedLarge.components.machine.id, 'fdm-modix-big60', 'large printable part routes to large-format machine');
+
+  const impossible = { ...large, bbox_mm: { x: 700, y: 700, z: 700 } };
+  const oversized = computeAMQuote(impossible, base, fdm, { timeModel: surrogateTimeModel });
+  assert.ok(oversized.needsReview, 'no-fit part needs review');
+  assert.ok(oversized.reviewReasons.some(r => /No compatible machine fits/.test(r)));
+});
+
+test('AM complexity: monotonic terms, clamp, and override bypass', () => {
+  const model = fdm.general.complexityModel;
+  const cube = { volume_mm3: 10000, surface_mm2: 6000, bbox_mm: { x: 20, y: 20, z: 25 }, watertight: true, genus: 0 };
+  const simple = autoComplexity(cube, model);
+  approx(simple.value, 1.0, 1e-9);
+
+  const thin = autoComplexity({ ...cube, surface_mm2: 20000 }, model);
+  const tall = autoComplexity({ ...cube, bbox_mm: { x: 8, y: 8, z: 160 } }, model);
+  const holes = autoComplexity({ ...cube, genus: 3 }, model);
+  const open = autoComplexity({ ...cube, watertight: false }, model);
+  assert.ok(thin.value > simple.value, 'higher SA:V increases complexity');
+  assert.ok(tall.value > simple.value, 'tall-thin aspect increases complexity');
+  assert.ok(holes.value > simple.value, 'holes/genus increases complexity');
+  assert.ok(open.value > simple.value, 'open mesh increases complexity');
+
+  const clamped = autoComplexity({ ...cube, surface_mm2: 1e6, bbox_mm: { x: 1, y: 1, z: 500 }, genus: 99, watertight: false }, { ...model, cap: 1.1 }, { supportVol_mm3: 1e6 });
+  approx(clamped.value, 1.1, 1e-9);
+
+  const coeffs = JSON.parse(JSON.stringify(fdm));
+  coeffs.processes.fdm.complexityOverride = 1.4;
+  const q = computeAMQuote(cube, { process: 'fdm', material: 'pla', qty: 1, lead: 'standard', machineId: 'fdm-prusa-mk4', params: { infill: 20, layerHeight: 0.2 } }, coeffs, { timeModel: surrogateTimeModel });
+  approx(q.factors.complexity, 1.4, 1e-9);
+  assert.ok(q.components.complexity.override);
+});
+
+test('AM capture payload can include machine, build source, and complexity terms', () => {
+  const feat = { volume_mm3: 10000, surface_mm2: 6000, bbox_mm: { x: 20, y: 20, z: 25 }, watertight: true, genus: 0 };
+  const q = computeAMQuote(feat, { process: 'fdm', material: 'pla', qty: 1, lead: 'standard', params: { infill: 20, layerHeight: 0.2 } }, fdm, { timeModel: surrogateTimeModel });
+  const event = quoteGeneratedEvent(q, {
+    overrides: {
+      machineId: q.components.machine.id,
+      machineAlternatives: q.components.machineAlternatives,
+      buildTimeSource: q.components.buildTimeSource,
+      complexity: q.components.complexity,
+    },
+  });
+  assert.equal(event.machineId, q.components.machine.id);
+  assert.equal(event.buildTimeSource, 'physics');
+  assert.ok(Array.isArray(event.machineAlternatives));
+  assert.equal(event.complexity.value, q.factors.complexity);
+});
+
+test('mesh quality analysis reports shells, bad edges, and risk classes', () => {
+  const p = [
+    0,0,0, 10,0,0, 10,10,0, 0,0,0, 10,10,0, 0,10,0,
+    0,0,10, 10,10,10, 10,0,10, 0,0,10, 0,10,10, 10,10,10,
+    0,0,0, 10,0,10, 10,0,0, 0,0,0, 0,0,10, 10,0,10,
+    10,0,0, 10,10,10, 10,10,0, 10,0,0, 10,0,10, 10,10,10,
+    10,10,0, 0,10,10, 0,10,0, 10,10,0, 10,10,10, 0,10,10,
+    0,10,0, 0,0,10, 0,0,0, 0,10,0, 0,10,10, 0,0,10,
+  ];
+  const q = analyzeMeshQuality(p);
+  assert.equal(q.properties.triCount, 12);
+  assert.equal(q.quality.shellCount, 1);
+  assert.equal(q.quality.badEdges, 0);
+  assert.equal(q.riskClasses.length, 12);
+});
+
+test('AM sliced time model can refine time and material grams only', () => {
+  const feat = { volume_mm3: 10000, surface_mm2: 6000, bbox_mm: { x: 20, y: 20, z: 25 }, watertight: true, genus: 0 };
+  const sel = { process: 'fdm', material: 'pla', qty: 1, lead: 'standard', machineId: 'fdm-prusa-mk4', params: { infill: 20, layerHeight: 0.2 } };
+  const q = computeAMQuote(feat, sel, fdm, {
+    timeModel: () => ({
+      est_hours: 0.5,
+      gramsModel: 8.5,
+      gramsSupport: 1.25,
+      source: 'sliced',
+      slicer: 'prusaslicer',
+    }),
+  });
+  assert.equal(q.components.buildTimeSource, 'sliced');
+  assert.equal(q.components.slicer, 'prusaslicer');
+  approx(q.components.est_hours, 0.5, 1e-9);
+  approx(q.components.weight_g, 8.5, 1e-9);
+  approx(q.components.supportGrams, 1.25, 1e-9);
+});
+
+test('Prusa bridge is opt-in and normalizes remote slicer responses', async () => {
+  const mesh = new ArrayBuffer(84 + 50);
+  new DataView(mesh).setUint32(80, 1, true);
+
+  assert.equal(await sliceMesh(mesh, { processKey: 'fdm' }, {}, {}), null);
+
+  const oldFetch = globalThis.fetch;
+  let progress = [];
+  let calls = 0;
+  try {
+    globalThis.fetch = async (url, init) => {
+      calls++;
+      if (calls === 1) {
+        assert.equal(url, 'https://slice.example/slice-jobs');
+        assert.equal(init.method, 'POST');
+        return new Response(JSON.stringify({ jobId: 'abc', statusUrl: '/slice-jobs/abc' }), { status: 200 });
+      }
+      assert.equal(url, 'https://slice.example/slice-jobs/abc');
+      return new Response(JSON.stringify({
+        state: 'succeeded',
+        progress: 1,
+        stage: 'Quote ready',
+        result: {
+          ok: true,
+          timeSec: 123,
+          gramsModel: 4.5,
+          gramsSupport: 0.6,
+          slicer: 'prusaslicer',
+          selectedOrientation: { name: 'original' },
+          trials: [],
+        },
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const sliced = await sliceMesh(mesh, { processKey: 'fdm' }, {}, {
+      apiUrl: 'https://slice.example/',
+      onProgress: (msg) => progress.push(msg),
+    });
+    assert.equal(progress[0], 'uploading');
+    assert.equal(progress[1].stage, 'queued');
+    assert.equal(progress.at(-1).stage, 'Quote ready');
+    assert.equal(sliced.source, 'sliced');
+    assert.equal(sliced.slicer, 'prusaslicer');
+    approx(sliced.timeSec, 123, 1e-9);
+
+    globalThis.fetch = async () => { const err = new Error('aborted'); err.name = 'AbortError'; throw err; };
+    const failed = await sliceMesh(mesh, { processKey: 'fdm' }, {}, { apiUrl: 'https://slice.example' });
+    assert.equal(failed.error, 'timeout');
+  } finally {
+    globalThis.fetch = oldFetch;
+  }
 });
 
 /* ----------------------------- laser engine ----------------------------- */
@@ -250,7 +463,7 @@ test('nest: fast yield is a fraction; true-shape refine never lowers it', async 
 });
 
 test('AM review gate flags oversized / non-watertight parts', () => {
-  const huge = { volume_mm3: 1e6, surface_mm2: 5e5, bbox_mm: { x: 400, y: 400, z: 400 }, watertight: true };
+  const huge = { volume_mm3: 1e6, surface_mm2: 5e5, bbox_mm: { x: 700, y: 700, z: 700 }, watertight: true };
   const q = computeAMQuote(huge, { process: 'fdm', material: 'pla', qty: 1, lead: 'standard', params: {} }, fdm);
   assert.ok(q.needsReview, 'oversized FDM part should need review');
 

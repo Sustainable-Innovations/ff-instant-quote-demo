@@ -34,13 +34,19 @@ const hasLocalStorage = () => {
 
 /** Parse engine config from the current URL (browser only). */
 export function readEngineConfig() {
-  if (!hasWindow) return { embed: false, coeffsUrl: null, captureMode: null, process: null };
+  if (!hasWindow) return { embed: false, coeffsUrl: null, captureMode: null, process: null, slicer: null, slicerApi: null };
   const q = new URLSearchParams(location.search);
+  const slicerApi = q.get('slicerApi');
+  const slicer = slicerApi && (!q.get('slicer') || q.get('slicer') === 'cura')
+    ? 'prusaslicer'
+    : q.get('slicer');
   return {
     embed: q.has('embed'),
     coeffsUrl: q.get('coeffs'),
     captureMode: q.get('capture'),
     process: q.get('process'),
+    slicer,
+    slicerApi,
   };
 }
 

@@ -457,7 +457,7 @@ function JobDetailPage({ item, go, requireAuth }) {
   const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html', 'laser': '../engines/quote-laser/index.html' };
   const engineKey = (jd && jd.quoteEngine) || '3d';
   const quoteUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
-  const quoteVersion = 'p0j-20260629';
+  const quoteVersion = 'am-machines-20260630';
   const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (jd && jd.quoteProcess ? '&process=' + jd.quoteProcess : '');
   // Engines report content height (ffQuoteHeight; ffPcbHeight alias) so the iframe never clips.
   const [engineH, setEngineH] = usePDet(engineKey === 'pcb' ? 1180 : 820);

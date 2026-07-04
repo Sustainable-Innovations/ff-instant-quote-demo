@@ -583,7 +583,7 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
   }, [engineKey]);
   const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html', 'laser': '../engines/quote-laser/index.html' };
   const quoteUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
-  const quoteVersion = 'p0j-20260629';
+  const quoteVersion = 'am-machines-20260630';
   const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (legacyQuote && legacyQuote.quoteProcess ? '&process=' + legacyQuote.quoteProcess : '');
 
   const startOrder = () => requireAuth(() => { setOrdering(true); window.scrollTo({ top: 0, behavior: 'smooth' }); });

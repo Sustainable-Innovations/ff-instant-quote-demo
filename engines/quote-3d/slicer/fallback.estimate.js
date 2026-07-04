@@ -1,55 +1,120 @@
 // engines/quote-3d/slicer/fallback.estimate.js
-// Phase-1 build-time SURROGATE for polymer AM (FDM · SLA · SLS). DOM/THREE-free.
+// DOM-free parametric build-time surrogate for polymer AM.
 //
-// Why: the legacy machine-time proxy was `volume / mmPerHour`, which ignores part
-// height. A tall, thin, hollow part has little volume but many layers and long build
-// time — the legacy model underprices it badly. This surrogate is layer-aware:
-//
-//   build_time ≈ depositedVolume / volumetricFlow  +  layerCount × perLayerOverhead
-//   depositedVolume = solidVolume × infillFactor   +  supportVolume
-//
-// It is the always-present fast path (keeps the <5s budget). A future CuraEngine-WASM
-// worker (slicer.bridge.js) can return the same {est_hours, materialFactor, supportVol_mm3}
-// shape to override it when feasible.
-//
-// Returns null when the process has no `build` block (e.g. CNC) so the kernel falls
-// back to its legacy time model — never throws.
+// FDM: deposited volume / effective flow + per-layer overhead.
+// SLA/MSLA/DLP: layer exposure + lift/peel/dead time, with bottom exposure premium.
+// SLS: shared powder build allocation by bounding-box occupancy and packing density.
 
-/**
- * @param {Object} features  {volume_mm3, surface_mm2, bbox_mm:{x,y,z}, watertight}
- * @param {Object} process   coeffs.processes[key] (carries the `build` block + `baseLayerHeight`/`params`)
- * @param {Object} params    UI param values {infill?, layerHeight?}
- * @returns {{est_hours:number, materialFactor:number, supportVol_mm3:number, layerCount:number}|null}
- */
-export function surrogateTimeModel(features, process, params) {
-  const b = process && process.build;
-  if (!b) return null; // subtractive / unmodelled process → kernel keeps legacy proxy
+function num(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
 
-  const lh = (params && params.layerHeight) || process.baseLayerHeight || 0.2;
+function layerHeight(process, params, build, fallback) {
+  return num(params && params.layerHeight, num(build && build.layerHeight, num(process && process.baseLayerHeight, fallback)));
+}
+
+function fdmTimeModel(features, process, params, build) {
+  const lh = layerHeight(process, params, build, 0.2);
   const z = (features.bbox_mm && features.bbox_mm.z) || 0;
   const layerCount = Math.max(1, Math.ceil(z / lh));
-
-  // Infill only applies where the process exposes it (FDM). SLA/SLS print solid.
-  const hasInfill = !!(process.params && process.params.infill);
-  const infill = hasInfill ? (params && params.infill != null ? params.infill : process.params.infill.default) : 100;
-  const materialFactor = hasInfill ? 0.15 + 0.85 * (infill / 100) : 1.0;
-
+  const infill = params && params.infill != null
+    ? params.infill
+    : ((process.params && process.params.infill && process.params.infill.default) || 20);
+  const materialFactor = 0.15 + 0.85 * (infill / 100);
   const solidVol = features.volume_mm3 || 0;
   const depositedVol = solidVol * materialFactor;
-
-  // Support proxy: a fraction of model volume, scaled up a little for tall parts
-  // (taller → more overhang risk). Kept simple and supplier-tunable via supportFraction.
-  const heightFactor = 1 + Math.min(0.5, z / 600); // up to +50% for very tall parts
-  const supportVol_mm3 = solidVol * (b.supportFraction || 0) * heightFactor;
-
-  const flow = b.volumetricFlow_mm3ps || 10; // effective deposition/cure rate
-  const overheadSec = b.layerOverheadSec || 0; // per-layer travel / recoat / exposure
+  const heightFactor = 1 + Math.min(0.5, z / 600);
+  const supportVol_mm3 = solidVol * (build.supportFraction || 0) * heightFactor;
+  const flow = build.volumetricFlow_mm3ps || 10;
+  const overheadSec = build.layerOverheadSec || 0;
   const printSec = (depositedVol + supportVol_mm3) / flow + layerCount * overheadSec;
 
   return {
-    est_hours: (printSec / 3600) * (b.timeMult || 1),
+    est_hours: (printSec / 3600) * num(build.timeMult, 1),
     materialFactor,
     supportVol_mm3,
     layerCount,
+    source: 'physics',
+    modelKind: 'fdm',
   };
+}
+
+function resinTimeModel(features, process, params, build) {
+  const lh = layerHeight(process, params, build, 0.05);
+  const z = (features.bbox_mm && features.bbox_mm.z) || 0;
+  const layerCount = Math.max(1, Math.ceil(z / lh));
+  const bottomLayers = Math.min(layerCount, Math.max(0, Math.round(num(build.bottomLayers, 5))));
+  const normalLayers = Math.max(0, layerCount - bottomLayers);
+  const layerTimeSec = num(build.layerTimeSec, 2.2);
+  const deadTimeSec = num(build.deadTimeSec, num(build.layerOverheadSec, 6.0));
+  const bottomExposureMult = num(build.bottomExposureMult, 4.0);
+  const laserTraceFactor = Math.max(0, num(build.laserTraceFactor, 0));
+  const supportVol_mm3 = (features.volume_mm3 || 0) * Math.max(0, num(build.supportFraction, 0.15));
+  const laserTraceSec = laserTraceFactor * ((features.surface_mm2 || 0) / 1000);
+  const printSec =
+    bottomLayers * layerTimeSec * bottomExposureMult +
+    normalLayers * layerTimeSec +
+    layerCount * deadTimeSec +
+    laserTraceSec;
+
+  return {
+    est_hours: (printSec / 3600) * num(build.timeMult, 1),
+    materialFactor: 1.0,
+    supportVol_mm3,
+    layerCount,
+    source: 'physics',
+    modelKind: 'resin',
+    resinLayerTimeSec: layerTimeSec,
+    deadTimeSec,
+    bottomLayers,
+    bottomExposureMult,
+    laserTraceSec,
+  };
+}
+
+function powderTimeModel(features, process, params, machine, build) {
+  const chamber = build.chamber || (machine && machine.envelope) || process.envelope || {};
+  const lh = layerHeight(process, params, build, 0.11);
+  const chamberX = Math.max(1, num(chamber.x, 1));
+  const chamberY = Math.max(1, num(chamber.y, 1));
+  const chamberZ = Math.max(1, num(chamber.z, 1));
+  const bbox = features.bbox_mm || {};
+  const bboxVol = Math.max(0, (bbox.x || 0) * (bbox.y || 0) * (bbox.z || 0));
+  const chamberVol = chamberX * chamberY * chamberZ;
+  const packingDensity = Math.max(0.01, Math.min(1, num(build.packingDensity, 0.1)));
+  const occupancyShare = bboxVol / Math.max(1, chamberVol * packingDensity);
+  const fullBuildLayers = Math.max(1, Math.ceil(chamberZ / lh));
+  const fullBuildHours = (fullBuildLayers * num(build.layerTimeSec, 9.0)) / 3600;
+  const fusedVol = Math.max(0, features.volume_mm3 || 0);
+  const powderRefreshVol_mm3 = Math.max(0, bboxVol - fusedVol) * Math.max(0, num(build.powderRefreshFraction, 0.5));
+
+  return {
+    est_hours: fullBuildHours * occupancyShare * num(build.timeMult, 1),
+    materialFactor: 1.0,
+    supportVol_mm3: 0,
+    powderRefreshVol_mm3,
+    layerCount: fullBuildLayers,
+    source: 'physics',
+    modelKind: 'powder',
+    packingDensity,
+    occupancyShare,
+    fullBuildHours,
+    chamber: { x: chamberX, y: chamberY, z: chamberZ },
+  };
+}
+
+/**
+ * @param {Object} features {volume_mm3, surface_mm2, bbox_mm:{x,y,z}, watertight}
+ * @param {Object} process coeffs.processes[key]
+ * @param {Object} params UI param values {infill?, layerHeight?, quality?}
+ * @param {Object} [machine] selected machine profile
+ */
+export function surrogateTimeModel(features, process, params, machine) {
+  const build = (machine && machine.build) || (process && process.build);
+  if (!build) return null;
+  const kind = build.kind || 'fdm';
+  if (kind === 'resin') return resinTimeModel(features, process, params, build);
+  if (kind === 'powder') return powderTimeModel(features, process, params, machine, build);
+  return fdmTimeModel(features, process, params, build);
 }

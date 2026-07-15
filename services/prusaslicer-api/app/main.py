@@ -17,6 +17,8 @@ SLICE_TIMEOUT_SEC = int(os.getenv("SLICE_TIMEOUT_SEC", "180"))
 CORS_ORIGIN = os.getenv("CORS_ORIGIN", "*")
 MAX_SLICE_WORKERS = int(os.getenv("MAX_SLICE_WORKERS", "1"))
 JOB_TTL_SEC = int(os.getenv("JOB_TTL_SEC", "900"))
+MAX_QUEUE_JOBS = int(os.getenv("MAX_QUEUE_JOBS", "4"))
+QUEUE_TIMEOUT_SEC = int(os.getenv("QUEUE_TIMEOUT_SEC", "120"))
 
 
 app = FastAPI(title="FlexFactory PrusaSlicer API", version="1.0.0")
@@ -44,6 +46,15 @@ def parse_json_field(raw, name):
 def cleanup_jobs():
     now = time.time()
     with jobs_lock:
+        for job in jobs.values():
+            if job.get("state") == "queued" and now - job.get("createdAt", now) > QUEUE_TIMEOUT_SEC:
+                job.update({
+                    "state": "failed",
+                    "progress": 1.0,
+                    "stage": "Manual review required",
+                    "error": "slicer queue timeout",
+                    "updatedAt": now,
+                })
         expired = [
             job_id for job_id, job in jobs.items()
             if now - job.get("updatedAt", job.get("createdAt", now)) > JOB_TTL_SEC
@@ -65,6 +76,10 @@ def public_job(job_id, job):
         "stage": job.get("stage", "Queued"),
         "elapsedSec": int(elapsed),
         "etaSec": eta,
+        "createdAt": job.get("createdAt"),
+        "startedAt": job.get("startedAt"),
+        "updatedAt": job.get("updatedAt"),
+        "uploadBytes": job.get("uploadBytes"),
         "currentTrial": job.get("currentTrial"),
         "totalTrials": job.get("totalTrials"),
         "result": job.get("result"),
@@ -82,7 +97,11 @@ def set_job(job_id, **updates):
 
 
 def run_slice_job(job_id, payload):
-    set_job(job_id, state="analyzing", progress=0.04, stage="Preparing mesh")
+    with jobs_lock:
+        job = jobs.get(job_id)
+        if not job or job.get("state") == "failed":
+            return
+    set_job(job_id, state="analyzing", progress=0.04, stage="Preparing mesh", startedAt=time.time())
 
     def progress_cb(update):
         set_job(
@@ -111,11 +130,25 @@ def run_slice_job(job_id, payload):
 
 @app.get("/health")
 def health():
+    cleanup_jobs()
     version = prusa_version()
+    with jobs_lock:
+        queued = sum(1 for job in jobs.values() if job.get("state") == "queued")
+        active = sum(1 for job in jobs.values() if job.get("state") in {"analyzing", "slicing", "scoring"})
+        oldest_queued_age = max(
+            [time.time() - job.get("createdAt", time.time()) for job in jobs.values() if job.get("state") == "queued"] or [0]
+        )
     return {
         "ok": version is not None,
         "slicer": "prusaslicer",
         "version": version,
+        "queue": {
+            "maxWorkers": max(1, MAX_SLICE_WORKERS),
+            "maxQueueJobs": MAX_QUEUE_JOBS,
+            "queued": queued,
+            "active": active,
+            "oldestQueuedSec": int(oldest_queued_age),
+        },
     }
 
 
@@ -136,6 +169,11 @@ async def create_slice_job(
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"upload exceeds {MAX_UPLOAD_MB} MB limit")
 
+    with jobs_lock:
+        queued_or_active = sum(1 for job in jobs.values() if job.get("state") in {"queued", "analyzing", "slicing", "scoring"})
+    if queued_or_active >= MAX_QUEUE_JOBS:
+        raise HTTPException(status_code=429, detail="slicer busy; try again shortly")
+
     job_id = uuid.uuid4().hex
     payload = {
         "data": data,
@@ -152,6 +190,7 @@ async def create_slice_job(
             "stage": "Queued",
             "createdAt": now,
             "updatedAt": now,
+            "uploadBytes": len(data),
             "currentTrial": 0,
             "totalTrials": None,
             "result": None,

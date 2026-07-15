@@ -4,8 +4,8 @@
 const HERO_SLIDES = [
   { tag: 'HEAVY EQUIPMENT', off: '10 machine classes', title: 'Rent site machinery.', sub: 'Forklifts, cranes, loaders and trucks from verified fleets', cta: 'Browse equipment', image: 'assets/equipment/hero-heavy-equipment.jpg?v=industrial-20260628b', route: { name: 'browse', kind: 'equipment' } },
   { tag: 'RAW MATERIALS', off: '16 stock lines', title: 'Industrial materials.', sub: 'Metals, wood, plastics, rubber and structural stock', cta: 'Shop materials', image: 'assets/materials/aluminum-plate.jpg?v=industrial-20260628b', route: { name: 'browse', kind: 'material' } },
-  { tag: 'SERVICES', off: '12 shops', title: 'CNC, on demand.', sub: '5-axis milling, PCB fab and custom manufacturing quotes', cta: 'Browse services', image: 'assets/hero/hero-cnc.jpg?v=perf-20260610', route: { name: 'browse', kind: 'job' } },
-  { tag: 'SPACES', off: '126 spaces', title: 'Book the shop floor.', sub: 'Benches, labs and bays available by the hour or day', cta: 'Browse spaces', image: 'assets/hero/hero-workshop.jpg?v=perf-20260610', route: { name: 'browse', kind: 'space' } },
+  { tag: 'MAKE', off: '13 shops', title: 'CNC, on demand.', sub: '5-axis milling, PCB fab and custom manufacturing quotes', cta: 'Browse make', image: 'assets/hero/hero-cnc.jpg?v=perf-20260610', route: { name: 'browse', kind: 'job' } },
+  { tag: 'WORK', off: '126 spaces', title: 'Book the shop floor.', sub: 'Benches, labs and bays available by the hour or day', cta: 'Browse work', image: 'assets/hero/hero-workshop.jpg?v=perf-20260610', route: { name: 'browse', kind: 'space' } },
 ];
 const PROMO_IMAGE = 'assets/hero/promo-pcb.jpg?v=perf-20260610';
 
@@ -16,13 +16,13 @@ const EQUIPMENT_CHIPS = ['Featured', 'Lifting', 'Earthmoving', 'Trucks', 'Concre
 const MATERIAL_CHIPS = ['Featured', 'Metals', 'Wood', 'Plastics', 'Rubber', 'Glass', 'Structural', 'Fasteners'];
 
 /* ---------------- Vertical config map (one place for label / nav / card CTA / route) ----------------
-   Internal `kind` values stay as-is ('job' = Services) to avoid churn in the working quote/order flow;
-   only the user-facing `label` says "Services". Cards, nav, and browse all read from here. */
+   Internal `kind` values stay as-is to avoid churn in the working quote/order flow;
+   only user-facing labels change. Cards, nav, and browse all read from here. */
 const KIND_META = {
-  job:       { key: 'job',       label: 'Services',  plural: 'services',  route: 'job',       cta: 'GET QUOTE',   icon: 'tools',    source: 'JOBS',      chips: 'JOB_CHIPS',       blurb: 'Custom manufacturing — quote or order' },
-  space:     { key: 'space',     label: 'Spaces',    plural: 'spaces',    route: 'detail',    cta: 'BOOK NOW',    icon: 'building', source: 'SPACES',    chips: 'SPACE_CHIPS',     blurb: 'Book a bench, desk or lab by the hour' },
-  equipment: { key: 'equipment', label: 'Equipment', plural: 'equipment', route: 'equipment', cta: 'RENT NOW',    icon: 'truck',    source: 'EQUIPMENT', chips: 'EQUIPMENT_CHIPS', blurb: 'Rent or lease heavy machines' },
-  material:  { key: 'material',  label: 'Materials', plural: 'materials', route: 'product',   cta: 'ADD TO CART', icon: 'box',      source: 'MATERIALS', chips: 'MATERIAL_CHIPS',  blurb: 'Buy stock and industrial supplies' },
+  job:       { key: 'job',       label: 'Make',      plural: 'make',      route: 'job',       cta: 'GET QUOTE',   icon: 'tools',    source: 'JOBS',      chips: 'JOB_CHIPS',       blurb: 'Custom manufacturing — quote or order' },
+  space:     { key: 'space',     label: 'Work',      plural: 'work',      route: 'detail',    cta: 'BOOK NOW',    icon: 'building', source: 'SPACES',    chips: 'SPACE_CHIPS',     blurb: 'Book a bench, desk or lab by the hour' },
+  equipment: { key: 'equipment', label: 'Rent',      plural: 'rent',      route: 'equipment', cta: 'RENT NOW',    icon: 'truck',    source: 'EQUIPMENT', chips: 'EQUIPMENT_CHIPS', blurb: 'Rent or lease heavy machines' },
+  material:  { key: 'material',  label: 'Shop',      plural: 'shop',      route: 'product',   cta: 'ADD TO CART', icon: 'box',      source: 'MATERIALS', chips: 'MATERIAL_CHIPS',  blurb: 'Buy stock and industrial supplies' },
 };
 const KIND_ORDER = ['job', 'space', 'equipment', 'material'];
 
@@ -80,8 +80,8 @@ const JOBS = [
   { id: 'J-1', kind: 'job', title: '6-Layer PCB · HASL Finish', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Multilayer'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(1), badge: { l: 'FEATURED', t: 'lime' }, off: 25, featured: true, blurb: 'Turnkey multilayer fabrication with controlled-impedance stack-ups and 24-hour express options.', instant: true },
   { id: 'J-2', kind: 'job', title: 'FDM Print · PLA / PETG / ABS', vendor: 'Vertex Fabrication', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['3D Print', 'FDM'], cat: '3D Printing', icon: 'box', image: CARD_IMG(2), badge: { l: 'TOP #1', t: 'blue' }, off: 0, featured: true, blurb: 'Industrial FDM farm — up to 300×300×400 mm, fast turnaround on functional prototypes.', instant: true },
   { id: 'J-3', kind: 'job', title: 'Prototype PCB · Quick-turn', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Multilayer'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(3), badge: { l: 'FEATURED', t: 'lime' }, off: 7, featured: true, blurb: 'Bare boards in 48 hours. ENIG or HASL, soldermask in six colors.', instant: true },
-  { id: 'J-4', kind: 'job', title: 'Bandsaw Cutting · Metal & Wood', vendor: 'Forge & Form', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['Cutting', 'Sheet'], cat: 'Laser', icon: 'tools', image: CARD_IMG(4), badge: { l: 'NEW', t: 'lime' }, off: 18, blurb: 'Precision stock cutting to length with deburring included.', fixed: true, from: 28 },
-  { id: 'J-5', kind: 'job', title: 'Resin (SLA) High-Detail Prints', vendor: 'Vertex Fabrication', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['3D Print', 'SLA'], cat: '3D Printing', icon: 'box', image: CARD_IMG(5), off: 0, blurb: '8K resin detail for miniatures, jewelry masters and dental.', fixed: true, from: 60 },
+  { id: 'J-4', kind: 'job', title: 'Bandsaw Cutting · Metal & Wood', vendor: 'Forge & Form', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['Cutting', 'Sheet'], cat: 'Laser', icon: 'tools', image: CARD_IMG(4), badge: { l: 'NEW', t: 'lime' }, off: 18, blurb: 'Precision stock cutting to length with deburring included.' },
+  { id: 'J-5', kind: 'job', title: 'Resin (SLA) High-Detail Prints', vendor: 'Vertex Fabrication', city: 'Riyadh', rating: 5.0, reviews: 137, tags: ['3D Print', 'SLA'], cat: '3D Printing', icon: 'box', image: CARD_IMG(5), off: 0, blurb: '8K resin detail for miniatures, jewelry masters and dental masters with fast parametric quoting.', instant: true },
   { id: 'J-6', kind: 'job', title: 'Flex PCB · Polyimide', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['PCB Fab', 'Flex'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(6), off: 7, blurb: 'Single and double-sided flex circuits with stiffeners.' },
   { id: 'J-7', kind: 'job', title: 'Laser Cut · Sheet Metal', vendor: 'Atlas Makerworks', city: 'Jeddah', rating: 5.0, reviews: 137, tags: ['Laser', 'Sheet'], cat: 'Laser', icon: 'layers', image: CARD_IMG(7), badge: { l: 'NEW', t: 'lime' }, off: 0, blurb: 'Fiber laser cutting for mild steel, stainless and aluminium — upload a DXF for an instant nested price.', instant: true },
   { id: 'J-8', kind: 'job', title: '5-Axis CNC Milling', vendor: 'Northgate Labs', city: 'Khobar', rating: 5.0, reviews: 137, tags: ['CNC', 'Aluminium'], cat: 'CNC', icon: 'tools', image: CARD_IMG(8), badge: { l: 'TOP #5', t: 'blue' }, off: 0, blurb: 'Tight-tolerance machined parts in aluminium, brass and POM.' },
@@ -89,6 +89,7 @@ const JOBS = [
   { id: 'J-10', kind: 'job', title: 'SMT Assembly · Reflow', vendor: 'Circuit Guild', city: 'Dammam', rating: 5.0, reviews: 137, tags: ['Assembly', 'SMT'], cat: 'PCB Fab', icon: 'grid', image: CARD_IMG(10), off: 0, blurb: 'Stencil, pick-and-place and reflow for small to medium runs.' },
   { id: 'J-11', kind: 'job', title: 'Anodizing & Finishing', vendor: 'Northgate Labs', city: 'Khobar', rating: 5.0, reviews: 137, tags: ['Finishing', 'Metal'], cat: 'CNC', icon: 'layers', image: CARD_IMG(11), off: 0, blurb: 'Type-II anodize in eight colours, bead-blast and passivation.' },
   { id: 'J-12', kind: 'job', title: 'Silicone & Resin Molding', vendor: 'Atlas Makerworks', city: 'Jeddah', rating: 5.0, reviews: 137, tags: ['Molding', 'Casting'], cat: 'Molding', icon: 'box', image: CARD_IMG(12), off: 0, blurb: 'Low-volume vacuum casting from your master or our print.' },
+  { id: 'J-13', kind: 'job', title: 'SLS Nylon 12 Prints', vendor: 'Vertex Fabrication', city: 'Riyadh', rating: 4.9, reviews: 86, tags: ['3D Print', 'SLS', 'Nylon'], cat: '3D Printing', icon: 'box', image: CARD_IMG(18), badge: { l: 'NEW', t: 'lime' }, off: 0, blurb: 'Powder-bed nylon parts for durable prototypes, brackets and small batches with no support scars.', instant: true },
 ];
 
 /* ---------------- Listings — Spaces (bookable desks / labs) ---------------- */
@@ -316,6 +317,84 @@ const JOB_DETAIL_FIXED = {
   finishes: ['Standard (layer lines visible)', 'Sanded smooth +SAR 25/part', 'Primed +SAR 35/part', 'Painted +SAR 80/part'],
 };
 
+const JOB_DETAIL_SLA = Object.assign({}, JOB_DETAIL_FIXED, {
+  id: 'J-5',
+  fixed: false,
+  title: 'Resin (SLA) High-Detail Prints',
+  crumb: ['Home', 'Jobs', '3D Printing', 'SLA Resin'],
+  available: 'Quoting instantly',
+  badges: [{ l: 'Instant Quote', t: 'blue' }, { l: 'Fine Detail', t: 'pos' }],
+  gallery: ['Resin detail', 'Supports', 'Clear resin', 'Dental model', 'Miniature', 'Finish'],
+  galleryImages: [CARD_IMG(5), CARD_IMG(18), CARD_IMG(17), CARD_IMG(13), CARD_IMG(2), CARD_IMG(4)],
+  blurb: 'High-detail SLA and MSLA resin printing for presentation models, miniatures, dental masters and small intricate parts. Upload STL or STEP and calculate a fast resin exposure quote.',
+  specs: [
+    ['Technology', 'SLA / MSLA resin'], ['Build volume', 'up to Form 3L class for larger parts'],
+    ['Layer height', '0.025 mm - 0.10 mm'], ['Materials', 'Standard resin - Tough resin'],
+    ['Supports', 'Generated and removed after print'], ['Post-processing', 'Wash and UV cure included'],
+    ['Best for', 'Fine features and smooth surfaces'], ['Lead time', '2-5 working days'],
+  ],
+  materials: ['Standard resin', 'Tough resin'],
+  colours: [['Grey', '#9E9E9E'], ['White', '#F5F5F5'], ['Black', '#212121'], ['Clear', '#DDEAF0']],
+  fileTypes: ['STL', 'STEP / STP'],
+  finishes: ['Standard support removal', 'Fine sanding +SAR 35/part', 'Primer-ready +SAR 50/part'],
+});
+
+const JOB_DETAIL_SLS = Object.assign({}, JOB_DETAIL_FIXED, {
+  id: 'J-13',
+  fixed: false,
+  title: 'SLS Nylon 12 Prints',
+  crumb: ['Home', 'Jobs', '3D Printing', 'SLS Nylon'],
+  available: 'Quoting instantly',
+  badges: [{ l: 'Instant Quote', t: 'blue' }, { l: 'No Supports', t: 'pos' }],
+  gallery: ['Nylon parts', 'Powder bed', 'Functional bracket', 'Batch nest', 'Finish', 'Scale'],
+  galleryImages: [CARD_IMG(18), CARD_IMG(12), CARD_IMG(8), CARD_IMG(2), CARD_IMG(11), CARD_IMG(4)],
+  blurb: 'SLS Nylon 12 powder-bed printing for durable functional parts and small batches. The quote model accounts for chamber occupancy, packing density and powder refresh allocation.',
+  specs: [
+    ['Technology', 'SLS powder bed'], ['Material', 'Nylon 12 powder'],
+    ['Build chamber', 'Fuse 1+ and EOS-class profiles'], ['Supports', 'None required'],
+    ['Layer height', '0.11 mm - 0.12 mm typical'], ['Finish', 'Depowdered matte white/grey'],
+    ['Best for', 'Durable prototypes and nested batches'], ['Lead time', '4-7 working days'],
+  ],
+  materials: ['Nylon 12 powder'],
+  colours: [['Natural white', '#E7E4DC'], ['Dyed black', '#242424']],
+  fileTypes: ['STL', 'STEP / STP'],
+  finishes: ['Depowdered standard', 'Tumbled +SAR 30/part', 'Dyed black +SAR 45/part'],
+});
+
+const JOB_DETAIL_AM_BY_ID = { 'J-2': JOB_DETAIL_FIXED, 'J-5': JOB_DETAIL_SLA, 'J-13': JOB_DETAIL_SLS };
+
+/* ---------------- Rich job detail - laser instant quote ---------------- */
+const JOB_DETAIL_LASER = {
+  id: 'J-7',
+  fixed: false,
+  title: 'Laser Cut · Sheet Metal',
+  crumb: ['Home', 'Jobs', 'Laser', 'Laser Cut · Sheet Metal'],
+  vendor: 'Atlas Makerworks', city: 'Jeddah', rating: 5.0, orders: 137,
+  available: 'Quoting instantly',
+  badges: [{ l: 'Instant Quote', t: 'blue' }, { l: 'Sheet Metal', t: 'pos' }],
+  gallery: ['Flat pattern', 'Nested sheet', 'Cut edge', 'Stainless', 'Aluminium', 'Deburring'],
+  galleryImages: [CARD_IMG(7), CARD_IMG(4), CARD_IMG(9), CARD_IMG(11), CARD_IMG(12), CARD_IMG(8)],
+  blurb: 'Fiber-laser flat-pattern cutting in mild steel, stainless and aluminium. Upload a DXF and calculate an indicative sheet-cutting price from material, thickness, cut length, pierces and nest yield.',
+  specs: [
+    ['Technology', 'Fiber laser cutting'], ['Materials', 'Mild steel - Stainless 304 - Aluminium'],
+    ['Thickness', '1 - 10 mm material-dependent'], ['Sheet size', 'up to 2500 x 1250 mm'],
+    ['Edge quality', 'Standard - fine / fusion edge'], ['Secondary ops', 'Deburring and bend review available'],
+    ['Best for', 'Flat brackets, panels, guards and profiles'], ['Lead time', '3-7 working days'],
+  ],
+  tiers: [
+    { qty: 1, label: '1 part', price: 65, unit: '/ part', note: 'Minimum instant order' },
+    { qty: 5, label: '5 parts', price: 220, unit: '/ batch', note: 'Small batch' },
+    { qty: 10, label: '10 parts', price: 390, unit: '/ batch', note: 'Save with nesting', save: 'SAVE 12%', popular: true },
+    { qty: 25, label: '25 parts', price: 820, unit: '/ batch', note: 'Production run', save: 'SAVE 20%' },
+  ],
+  materials: ['Mild steel', 'Stainless 304', 'Aluminium 5052'],
+  colours: [['Raw metal', '#B9B7AD'], ['Brushed', '#D5D7DA'], ['Black powder coat', '#202124']],
+  fileTypes: ['DXF', 'DWG', 'SVG', 'STEP / STP'],
+  finishes: ['Raw cut edge', 'Deburred +SAR 15/part', 'Powder-coat review'],
+};
+
+const JOB_DETAIL_LASER_BY_ID = { 'J-7': JOB_DETAIL_LASER };
+
 /* ---------------- Rich job detail — PCB instant quote (Prototype PCB) ---------------- */
 const JOB_DETAIL_PCB = {
   id: 'J-3', fixed: false,
@@ -409,6 +488,7 @@ const JOB_DETAILS = {
     quote: true,                 // embed the instant-quote engine
     quoteEngine: 'pcb',          // PCB/PCBA engine
     quoteProcess: 'pcb',
+    quoteDefaults: { layers: '6' },
     summary: 'Turnkey multilayer PCB fabrication with controlled-impedance stack-ups and 24-hour express options. Upload your Gerber package for an instant, indicative price — layers, board area, finish and quantity update live. Circuit Guild confirms a firm quote before anything is charged.',
     specs: [
       { k: 'Layers',         v: 'up to 6 · signal / power / ground', icon: 'layers' },
@@ -455,6 +535,7 @@ const JOB_DETAILS = {
     quote: true,                 // embed the instant-quote engine
     quoteEngine: 'pcb',          // PCB/PCBA engine (placeholder for now)
     quoteProcess: 'pcb',
+    quoteDefaults: { layers: '2' },
     summary: 'Quick-turn bare-board fabrication. Upload your Gerber or ODB++ package for an instant, indicative price — layer count, board area, finish and quantity update live. Circuit Guild confirms a firm quote before anything is charged.',
     specs: [
       { k: 'Layers',         v: '1 – 6 layers', icon: 'layers' },
@@ -493,6 +574,52 @@ const JOB_DETAILS = {
       { ic: 'send',   t: 'Request supplier match', s: 'Atlas Makerworks confirms a firm quote' },
     ],
   },
+  'J-5': {
+    id: 'J-5',
+    crumb: ['Home', 'Jobs', '3D Printing', 'SLA Resin'],
+    location: 'Industrial City 2, Riyadh',
+    available: 'Quoting instantly',
+    quote: true,
+    quoteEngine: '3d',
+    quoteProcess: 'sla',
+    summary: 'High-detail resin printing for presentation models, miniatures and dental masters. Upload STL or STEP and calculate a fast resin exposure quote.',
+    specs: [
+      { k: 'Technology', v: 'SLA / MSLA resin', icon: 'layers' },
+      { k: 'Layer height', v: '0.025 - 0.10 mm', icon: 'filter' },
+      { k: 'Materials', v: 'Standard resin - Tough resin', icon: 'box' },
+      { k: 'Supports', v: 'Generated and removed', icon: 'tools' },
+      { k: 'Post-process', v: 'Wash and UV cure included', icon: 'gear' },
+      { k: 'Lead time', v: '2-5 working days', icon: 'truck' },
+    ],
+    steps: [
+      { ic: 'upload', t: 'Upload your model', s: 'STL or STEP - analysed in your browser' },
+      { ic: 'gear', t: 'Pick resin and quality', s: 'Layer exposure model calculates time and support resin' },
+      { ic: 'send', t: 'Request supplier match', s: 'Vertex Fabrication confirms manufacturability' },
+    ],
+  },
+  'J-13': {
+    id: 'J-13',
+    crumb: ['Home', 'Jobs', '3D Printing', 'SLS Nylon'],
+    location: 'Industrial City 2, Riyadh',
+    available: 'Quoting instantly',
+    quote: true,
+    quoteEngine: '3d',
+    quoteProcess: 'sls',
+    summary: 'SLS Nylon 12 powder-bed printing for durable functional parts and small batches. The quote accounts for chamber occupancy, packing density and powder refresh allocation.',
+    specs: [
+      { k: 'Technology', v: 'SLS powder bed', icon: 'layers' },
+      { k: 'Material', v: 'Nylon 12 powder', icon: 'box' },
+      { k: 'Supports', v: 'None required', icon: 'check' },
+      { k: 'Packing', v: 'Build-share model', icon: 'grid' },
+      { k: 'Finish', v: 'Depowdered matte surface', icon: 'gear' },
+      { k: 'Lead time', v: '4-7 working days', icon: 'truck' },
+    ],
+    steps: [
+      { ic: 'upload', t: 'Upload your model', s: 'STL or STEP - analysed in your browser' },
+      { ic: 'gear', t: 'Pick nylon quality and quantity', s: 'Powder packing model estimates chamber share' },
+      { ic: 'send', t: 'Request supplier match', s: 'Vertex Fabrication confirms nesting and delivery' },
+    ],
+  },
 };
 
 /* ---------------- Account (buyer) ---------------- */
@@ -529,6 +656,8 @@ Object.assign(window, {
   HERO_SLIDES, PROMO_IMAGE, JOB_CHIPS, SPACE_CHIPS, EQUIPMENT_CHIPS, MATERIAL_CHIPS, KIND_META, KIND_ORDER,
   FILTER_TREE, FILTER_TREES, LOCATIONS, RATING_OPTS, DEAL_OPTS,
   VENDORS, JOBS, SPACES, EQUIPMENT, MATERIALS, SPACE_DETAIL, JOB_DETAIL, JOB_DETAIL_FIXED,
+  JOB_DETAIL_SLA, JOB_DETAIL_SLS, JOB_DETAIL_AM_BY_ID,
+  JOB_DETAIL_LASER, JOB_DETAIL_LASER_BY_ID,
   JOB_DETAIL_PCB, JOB_DETAIL_PCB6, JOB_DETAIL_PCB_BY_ID, JOB_DETAILS, MOCK_ORDERS, MOCK_QUOTES, CLIENT,
   REWARD_TIERS, getRewardStatus, MARKET_STATS,
 });

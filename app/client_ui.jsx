@@ -92,10 +92,10 @@ function Thumb({ icon = 'box', label, tone = 'blue', h = 200, image, alt = '', l
 
 /* ---------------- Public header ---------------- */
 const NAV_LINKS = [
-  { id: 'job', kind: 'job', label: 'Services' },
-  { id: 'space', kind: 'space', label: 'Spaces' },
-  { id: 'equipment', kind: 'equipment', label: 'Equipment' },
-  { id: 'material', kind: 'material', label: 'Materials' },
+  { id: 'job', kind: 'job', label: 'Make' },
+  { id: 'space', kind: 'space', label: 'Work' },
+  { id: 'equipment', kind: 'equipment', label: 'Rent' },
+  { id: 'material', kind: 'material', label: 'Shop' },
 ];
 function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery, cartCount = 0, onCart }) {
   const [menuOpen, setMenuOpen] = usePCU(false);
@@ -121,7 +121,7 @@ function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery, ca
         <div className="desktop-only" style={{ flex: 1, display: 'flex', maxWidth: 640, margin: '0 auto' }}>
           <div className="chamfer-sm" style={{ display: 'flex', alignItems: 'center', gap: 10, height: 44, padding: '0 16px', background: 'var(--surface)', border: '1px solid var(--line-strong)', width: '100%' }}>
             <Icon name="search" size={18} style={{ color: 'var(--ink-3)' }} />
-            <input value={query || ''} onChange={e => setQuery && setQuery(e.target.value)} placeholder="Search services, spaces, equipment, materials…"
+            <input value={query || ''} onChange={e => setQuery && setQuery(e.target.value)} placeholder="Search make, work, rent, shop..."
               onKeyDown={e => { if (e.key === 'Enter') go({ name: 'browse', kind: 'job' }); }}
               style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, width: '100%', color: 'var(--ink)' }} />
           </div>
@@ -146,7 +146,7 @@ function PublicHeader({ route, go, authed, onSignIn, onMenu, query, setQuery, ca
               <input defaultValue={query || ''}
                 onChange={e => setQuery && setQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { go({ name: 'browse', kind: 'job' }); close(); } }}
-                placeholder="Search services, spaces, equipment, materials…"
+                placeholder="Search make, work, rent, shop..."
                 style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 15, width: '100%', color: 'var(--ink)' }} autoFocus />
             </div>
           </div>

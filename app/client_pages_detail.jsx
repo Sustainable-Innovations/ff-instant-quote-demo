@@ -455,10 +455,29 @@ function JobDetailPage({ item, go, requireAuth }) {
   const crumb = (jd && jd.crumb) || ['Home', 'Jobs', item.cat, item.title];
   const summary = (jd && jd.summary) || item.blurb;
   const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html', 'laser': '../engines/quote-laser/index.html' };
+  const PRUSA_SLICER_API = 'https://ff-prusaslicer-api-production.up.railway.app';
   const engineKey = (jd && jd.quoteEngine) || '3d';
-  const quoteUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
-  const quoteVersion = 'am-machines-20260630';
-  const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (jd && jd.quoteProcess ? '&process=' + jd.quoteProcess : '');
+  const quoteBaseUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
+  const quoteProcess = jd && jd.quoteProcess;
+  const quoteVersion = 'iq-demo-20260715a';
+  const buildQuoteUrl = (embed) => {
+    const params = new URLSearchParams();
+    if (embed) params.set('embed', '1');
+    params.set('v', quoteVersion);
+    if (quoteProcess) params.set('process', quoteProcess);
+    if (jd && jd.quoteDefaults) {
+      Object.entries(jd.quoteDefaults).forEach(([k, v]) => {
+        if (v != null && v !== '') params.set(k, v);
+      });
+    }
+    if (engineKey === '3d' && quoteProcess === 'fdm') {
+      params.set('slicer', 'prusaslicer');
+      params.set('slicerApi', PRUSA_SLICER_API);
+    }
+    return quoteBaseUrl + '?' + params.toString();
+  };
+  const quoteUrl = buildQuoteUrl(false);
+  const embedUrl = buildQuoteUrl(true);
   // Engines report content height (ffQuoteHeight; ffPcbHeight alias) so the iframe never clips.
   const [engineH, setEngineH] = usePDet(engineKey === 'pcb' ? 1180 : 820);
   useEffDet(() => {

@@ -384,8 +384,10 @@ test('Prusa bridge is opt-in and normalizes remote slicer responses', async () =
       apiUrl: 'https://slice.example/',
       onProgress: (msg) => progress.push(msg),
     });
-    assert.equal(progress[0], 'uploading');
-    assert.equal(progress[1].stage, 'queued');
+    assert.equal(progress[0].stage, 'Preparing upload');
+    assert.equal(progress[1].stage, 'Uploading mesh');
+    assert.equal(progress[2].stage, 'Queued on PrusaSlicer service');
+    assert.equal(progress[2].jobId, 'abc');
     assert.equal(progress.at(-1).stage, 'Quote ready');
     assert.equal(sliced.source, 'sliced');
     assert.equal(sliced.slicer, 'prusaslicer');

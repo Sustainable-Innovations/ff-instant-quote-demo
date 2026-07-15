@@ -320,6 +320,10 @@ const SKEY = 'ff_laser_rates_v2'; // v2: canonical pricing (programmingFee/learn
 function loadSettings(){ try { const s = JSON.parse(localStorage.getItem(SKEY)); return s ? coreDeepMerge(structuredClone(DEFAULTS), s) : structuredClone(DEFAULTS); } catch(e){ return structuredClone(DEFAULTS); } }
 function saveSettings(s){ try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch(e){} }
 let SET = loadSettings();
+function minQtyFromTiers(tiers) {
+  const vals = (tiers || []).map(t => Number(t.minQty)).filter(Number.isFinite).sort((a, b) => a - b);
+  return String(vals[0] || 1);
+}
 
 /* ---------- engine config + capture ---------- */
 const engineCfg = readEngineConfig();
@@ -329,7 +333,12 @@ const emitQuoteGenerated = debounce((result) => {
 }, 500);
 if (engineCfg.coeffsUrl) {
   loadCoefficients('laser', { coeffsUrl: engineCfg.coeffsUrl, defaults: structuredClone(DEFAULTS) })
-    .then((c) => { SET = coreDeepMerge(structuredClone(DEFAULTS), c); buildMaterialOptions(); if (state.loaded) recompute(); })
+    .then((c) => {
+      SET = coreDeepMerge(structuredClone(DEFAULTS), c);
+      if (!state.loaded) state.spec.qty = minQtyFromTiers(SET.qty);
+      buildMaterialOptions();
+      if (state.loaded) recompute();
+    })
     .catch(() => {});
 }
 
@@ -359,7 +368,7 @@ function postHeight(){ if(!document.body.classList.contains('embedded')) return;
 /* ---------- state ---------- */
 const state = {
   loaded: false, kind: null, metrics: null, parserConfidence: 1, fileMeta: null, detectedThickness: null,
-  spec: { material: '', thickness: '', qty: '50', edge: 'standard', grain: 'any', lead: 'standard', yieldOverride: null },
+  spec: { material: '', thickness: '', qty: minQtyFromTiers(SET.qty), edge: 'standard', grain: 'any', lead: 'standard', yieldOverride: null },
 };
 
 /* ---------- 3D viewer (lazy) ---------- */

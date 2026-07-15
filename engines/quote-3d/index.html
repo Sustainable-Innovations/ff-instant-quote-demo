@@ -1850,6 +1850,9 @@ function setSliceProgress(key, stage, budgetMs = SLICE_BUDGET_MS) {
     etaSec: Number.isFinite(Number(update.etaSec)) ? Number(update.etaSec) : null,
     currentTrial: update.currentTrial || null,
     totalTrials: update.totalTrials || null,
+    jobId: update.jobId || (prev && prev.jobId) || null,
+    uploadLoaded: Number.isFinite(Number(update.uploadLoaded)) ? Number(update.uploadLoaded) : (prev && prev.uploadLoaded) || null,
+    uploadTotal: Number.isFinite(Number(update.uploadTotal)) ? Number(update.uploadTotal) : (prev && prev.uploadTotal) || null,
     budgetMs,
     startedAt: prev ? prev.startedAt : performance.now(),
   });
@@ -1910,7 +1913,10 @@ function maybeStartSlicer(result, sel) {
 
   slicePending.add(key);
   sliceErrors.delete(key);
-  setSliceProgress(key, currentAnalysis && currentAnalysis.watertight === false ? 'starting with mesh warning' : 'queued', SLICE_BUDGET_MS);
+  setSliceProgress(key, {
+    stage: currentAnalysis && currentAnalysis.watertight === false ? 'Preparing upload with mesh warning' : 'Preparing upload',
+    progress: 0.01,
+  }, SLICE_BUDGET_MS);
   startSliceTicker();
 
   const meshCopy = currentSliceMeshBuffer.slice(0);
@@ -1977,7 +1983,7 @@ function renderMachineOptions(result) {
   ui.fMachine.value = stillValid ? selected : '';
 }
 
-function renderCenterSliceStatus({ manualReview, pct, stage, trial, elapsed, eta, machineName, slicerStatus }) {
+function renderCenterSliceStatus({ manualReview, pct, stage, trial, elapsed, eta, machineName, slicerStatus, job, upload }) {
   if (!ui.sliceStatusPanel) return;
   if (manualReview) {
     ui.sliceStatusPanel.classList.add('hidden');
@@ -1992,6 +1998,8 @@ function renderCenterSliceStatus({ manualReview, pct, stage, trial, elapsed, eta
     <div class="slice-meta">
       <span><strong>${stage}</strong></span><span>${pct}%</span>
       <span>${trial}</span><span>${[elapsed, eta].filter(Boolean).join(' · ')}</span>
+      ${upload ? `<span>Upload</span><span>${upload}</span>` : ''}
+      ${job ? `<span>Backend job</span><span>${job}</span>` : ''}
       <span>PrusaSlicer</span><span>${slicerStatus || 'queued'}</span>
     </div>
   `;
@@ -2114,11 +2122,17 @@ function renderFdmSlicingGate(sel, result, slicerStatus) {
   const trial = progress && progress.totalTrials
     ? `trial ${progress.currentTrial || 0}/${progress.totalTrials}`
     : 'preparing trials';
+  const job = progress && progress.jobId ? `job ${String(progress.jobId).slice(0, 8)}` : '';
+  const upload = progress && progress.uploadTotal
+    ? `${(progress.uploadLoaded / (1024 * 1024)).toFixed(1)} / ${(progress.uploadTotal / (1024 * 1024)).toFixed(1)} MB`
+    : '';
   const stage = progress && progress.stage ? progress.stage : (slicerStatus || 'Queued');
-  renderCenterSliceStatus({ manualReview, pct, stage, trial, elapsed, eta, machineName, slicerStatus });
+  renderCenterSliceStatus({ manualReview, pct, stage, trial, elapsed, eta, machineName, slicerStatus, job, upload });
   ui.breakdown.innerHTML = `
     <div class="row"><span>FDM quote status</span><span>${manualReview ? 'manual review' : 'slicing'}</span></div>
     <div class="row"><span>Selected machine</span><span>${machineName}</span></div>
+    ${job ? `<div class="row"><span>Backend job</span><span>${job}</span></div>` : ''}
+    ${upload ? `<div class="row"><span>Upload</span><span>${upload}</span></div>` : ''}
     <div class="row"><span>PrusaSlicer</span><span>${slicerStatus || 'queued'}</span></div>
     <div class="row"><span>Price</span><span>waiting for sliced result</span></div>
   `;

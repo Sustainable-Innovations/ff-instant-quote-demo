@@ -71,7 +71,7 @@ export function computePCBQuote(spec, detected, c, opts = {}) {
     quantity: qty,
     leadTimeDays: leadDays(c.leadDays, s.lead, 6),
     breakdown: items.map((it) => row(slug(it.l), it.l, it.v, it.s)),
-    components: { items, subtotal, leadMult, leadAdd, platform, platformPct: c.platformPct },
+    components: { items, subtotal, leadMult, leadAdd, platform, platformPct: c.platformPct, qtyFactor: qf },
     features,
     coefficientsRef: coefficientsRef(c),
     confidence: review.confidence,

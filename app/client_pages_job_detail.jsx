@@ -41,7 +41,7 @@ function PriceTier({ tier, selected, onSelect }) {
 
 /* ---------- quote rail ---------- */
 function QuoteRail({ d, selectedTier, onStart }) {
-  const tier = d.pricing.find(p => p === selectedTier) || d.pricing[2];
+  const tier = d.pricing.find(p => p === selectedTier) || d.pricing[0];
   return (
     <div className="chamfer" style={{ background: 'var(--surface)', border: '1px solid var(--line)', padding: '22px 22px', position: 'sticky', top: 88 }}>
       <div style={{ height: 3, width: 48, background: 'var(--ff-lime)', marginBottom: 16 }} />
@@ -78,7 +78,7 @@ function QuoteRail({ d, selectedTier, onStart }) {
 /* ===================== FIXED ORDER RAIL + SHELL ===================== */
 
 function OrderRail({ d, selTier, setSelTier, onStart }) {
-  const tier = selTier || d.tiers[2];
+  const tier = selTier || d.tiers[0];
   return (
     <div className="chamfer" style={{ background: 'var(--surface)', border: '1px solid var(--line)', padding: '22px 22px', position: 'sticky', top: 88 }}>
       <div style={{ height: 3, width: 48, background: 'var(--ff-lime)', marginBottom: 16 }} />
@@ -150,7 +150,7 @@ const ORDER_STEPS = ['Configure', 'Upload File', 'Review & Confirm'];
 
 function FixedOrderShell({ d, selTier, onDone, onCancel }) {
   const [step, setStep] = usePJob(0);
-  const [form, setForm] = usePJob({ tier: selTier || d.tiers[2], material: d.materials[0], colour: d.colours[0][0], finish: d.finishes[0], files: [] });
+  const [form, setForm] = usePJob({ tier: selTier || d.tiers[0], material: d.materials[0], colour: d.colours[0][0], finish: d.finishes[0], files: [] });
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const [dragging, setDragging] = usePJob(false);
 
@@ -319,7 +319,7 @@ function StepDetails({ form, setForm }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div>
           <label style={{ fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 6 }}>Quantity <span style={{ color: 'var(--neg)' }}>*</span></label>
-          <select value={form.qty || '100 pcs'} onChange={e => f('qty', e.target.value)}
+          <select value={form.qty || '5 pcs'} onChange={e => f('qty', e.target.value)}
             className="chamfer-sm" style={{ width: '100%', height: 44, padding: '0 14px', border: '1px solid var(--line-strong)', fontSize: 14, background: 'var(--bg)', color: 'var(--ink)', outline: 'none', appearance: 'none' }}>
             {['5 pcs', '10 pcs', '25 pcs', '50 pcs', '100 pcs', '250 pcs', '500 pcs', '1000+ pcs'].map(q => <option key={q}>{q}</option>)}
           </select>
@@ -479,10 +479,10 @@ function StepTimeline({ form, setForm }) {
 
 /* --- step 5: review --- */
 function StepReview({ form, d, onSubmit }) {
-  const tier = d.pricing.find(p => p.qty === form.qty) || d.pricing[2];
+  const tier = d.pricing.find(p => p.qty === form.qty) || d.pricing[0];
   const rows = [
     ['Service', d.title], ['Vendor', d.vendor + ' · ' + d.city],
-    ['Quantity', form.qty || '100 pcs'], ['Priority', form.priority || 'Standard (5 days)'],
+    ['Quantity', form.qty || '5 pcs'], ['Priority', form.priority || 'Standard (5 days)'],
     ['Material', form.material || 'FR4 Standard'], ['Finish', form.finish || d.finishes[0]],
     ['Soldermask', form.smask || 'Green'],
     ['Files', (form.files || []).length + ' file(s) attached'],
@@ -520,7 +520,7 @@ function StepReview({ form, d, onSubmit }) {
 /* ===================== QUOTE REQUEST SHELL ===================== */
 function QuoteRequestShell({ d, onDone, onCancel }) {
   const [step, setStep] = usePJob(0);
-  const [form, setForm] = usePJob({ qty: '100 pcs', priority: 'Standard (5 days)', material: 'FR4 Standard', finish: d.finishes[0], smask: 'Green', timeline: 'ASAP — start immediately', delivery: 'Delivery to my address', files: [] });
+  const [form, setForm] = usePJob({ qty: '5 pcs', priority: 'Standard (5 days)', material: 'FR4 Standard', finish: d.finishes[0], smask: 'Green', timeline: 'ASAP — start immediately', delivery: 'Delivery to my address', files: [] });
   const canNext = step === 0 ? (form.name && form.description) : step === 2 ? form.files && form.files.length > 0 : true;
 
   const stepContent = [
@@ -563,9 +563,50 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
   const hasInstantQuote = !!(legacyQuote && legacyQuote.quote);
   const isFixed = job ? job.fixed && !hasInstantQuote : false;
   const engineKey = (legacyQuote && legacyQuote.quoteEngine) || '3d';
-  const d = engineKey === 'pcb' ? ((window.JOB_DETAIL_PCB_BY_ID || {})[job.id] || window.JOB_DETAIL_PCB) : hasInstantQuote ? window.JOB_DETAIL_FIXED : isFixed ? window.JOB_DETAIL_FIXED : window.JOB_DETAIL;
+  const manualDetail = job ? {
+    id: job.id,
+    title: job.title,
+    crumb: ['Home', 'Jobs', job.cat || 'Make', job.title],
+    vendor: job.vendor,
+    city: job.city,
+    rating: job.rating || 5,
+    orders: job.reviews || 0,
+    available: 'Manual review quote',
+    badges: [{ l: 'Supplier Review', t: 'blue' }],
+    gallery: ['Service', 'Files', 'Review', 'Production'],
+    galleryImages: [job.image, job.image, job.image, job.image].filter(Boolean),
+    blurb: job.blurb || 'Send the supplier your files, drawings and requirements. They will review manufacturability and return a firm quote.',
+    specs: [
+      ['Service type', job.cat || 'Custom manufacturing'],
+      ['Quote path', 'Supplier review'],
+      ['Files', 'CAD, drawings or process notes'],
+      ['Lead time', 'Confirmed after review'],
+      ['Pricing', 'Firm quote before payment'],
+      ['Vendor', `${job.vendor} - ${job.city}`],
+    ],
+    pricing: [
+      { qty: 'Prototype', price: null, unit: 'custom', note: 'Reviewed from your files' },
+      { qty: 'Small batch', price: null, unit: 'custom', note: 'Supplier confirms lead time' },
+      { qty: 'Production', price: null, unit: 'custom', note: 'Volume quote available' },
+      { qty: 'Urgent', price: null, unit: 'custom', note: 'Express review on request' },
+    ],
+    fileTypes: ['STEP / STP', 'STL / 3MF', 'DXF / DWG', 'PDF drawing', 'ZIP package'],
+    materials: ['As specified in your RFQ'],
+    finishes: ['As specified in your RFQ'],
+  } : window.JOB_DETAIL;
+  const instantDetailByEngine = () => {
+    if (engineKey === 'pcb') return ((window.JOB_DETAIL_PCB_BY_ID || {})[job.id] || manualDetail);
+    if (engineKey === '3d') return ((window.JOB_DETAIL_AM_BY_ID || {})[job.id] || manualDetail);
+    if (engineKey === 'laser') return ((window.JOB_DETAIL_LASER_BY_ID || {})[job.id] || manualDetail);
+    return manualDetail;
+  };
+  const d = hasInstantQuote ? instantDetailByEngine()
+    : isFixed ? window.JOB_DETAIL_FIXED : manualDetail;
   const [imgIdx, setImgIdx] = usePJob(0);
-  const [selTier, setSelTier] = usePJob((hasInstantQuote || isFixed) ? d.tiers[2] : d.pricing[2]);
+  const defaultTier = ((hasInstantQuote || isFixed) && d.tiers && d.tiers.length)
+    ? d.tiers[0]
+    : ((d.pricing && d.pricing[0]) || (d.tiers && d.tiers[0]));
+  const [selTier, setSelTier] = usePJob(defaultTier);
   const [ordering, setOrdering] = usePJob(false);
   const [quoting, setQuoting] = usePJob(false);
   const quoteRef = useRefJob(null);
@@ -582,9 +623,29 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
     return () => window.removeEventListener('message', onMsg);
   }, [engineKey]);
   const ENGINE_URLS = { '3d': '../engines/quote-3d/index.html', 'pcb': '../engines/quote-pcb/index.html', 'laser': '../engines/quote-laser/index.html' };
-  const quoteUrl = ENGINE_URLS[engineKey] || ENGINE_URLS['3d'];
-  const quoteVersion = 'am-machines-20260630';
-  const embedUrl = quoteUrl + '?embed=1&v=' + quoteVersion + (legacyQuote && legacyQuote.quoteProcess ? '&process=' + legacyQuote.quoteProcess : '');
+  const PRUSA_SLICER_API = 'https://ff-prusaslicer-api-production.up.railway.app';
+  const quoteBaseUrl = ENGINE_URLS[engineKey] || null;
+  const showInstantQuote = hasInstantQuote && !!quoteBaseUrl;
+  const quoteProcess = legacyQuote && legacyQuote.quoteProcess;
+  const quoteVersion = 'iq-demo-20260715a';
+  const buildQuoteUrl = (embed) => {
+    const params = new URLSearchParams();
+    if (embed) params.set('embed', '1');
+    params.set('v', quoteVersion);
+    if (quoteProcess) params.set('process', quoteProcess);
+    if (legacyQuote && legacyQuote.quoteDefaults) {
+      Object.entries(legacyQuote.quoteDefaults).forEach(([k, v]) => {
+        if (v != null && v !== '') params.set(k, v);
+      });
+    }
+    if (engineKey === '3d' && quoteProcess === 'fdm') {
+      params.set('slicer', 'prusaslicer');
+      params.set('slicerApi', PRUSA_SLICER_API);
+    }
+    return quoteBaseUrl ? quoteBaseUrl + '?' + params.toString() : '';
+  };
+  const quoteUrl = buildQuoteUrl(false);
+  const embedUrl = buildQuoteUrl(true);
 
   const startOrder = () => requireAuth(() => { setOrdering(true); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   const startQuote = () => requireAuth(() => { setQuoting(true); window.scrollTo({ top: 0, behavior: 'smooth' }); });
@@ -642,7 +703,7 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
             <h2 style={{ margin: '0 0 4px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', color: 'var(--ff-blue)' }}>TECHNICAL SPECIFICATIONS</h2>
             {d.specs.map(([k, v], i) => <SpecRow key={k} label={k} value={v} last={i === d.specs.length - 1} />)}
           </div>
-          {hasInstantQuote && (
+          {showInstantQuote && (
             <section ref={quoteRef} style={{ marginBottom: 20 }}>
               <div style={{ height: 4, width: 56, background: 'var(--ff-lime)', marginBottom: 14 }} />
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -663,7 +724,7 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
             </section>
           )}
           {/* pricing section */}
-          {!hasInstantQuote && <div className="chamfer" ref={quoteRef} style={{ background: 'var(--surface)', border: '1px solid var(--line)', padding: '20px 24px', marginBottom: 20 }}>
+          {!showInstantQuote && <div className="chamfer" ref={quoteRef} style={{ background: 'var(--surface)', border: '1px solid var(--line)', padding: '20px 24px', marginBottom: 20 }}>
             <h2 style={{ margin: '0 0 16px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', color: 'var(--ff-blue)' }}>PRICING</h2>
             {isFixed
               ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }} className="tier-grid">
@@ -689,7 +750,7 @@ function JobDetailPage({ route, item, go, authed, requireAuth }) {
           </div>
         </div>
         {/* right rail */}
-        {hasInstantQuote
+        {showInstantQuote
           ? <InstantQuoteRail d={d} onStart={scrollToQuote} />
           : isFixed
           ? <OrderRail d={d} selTier={selTier} setSelTier={setSelTier} onStart={startOrder} />

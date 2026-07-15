@@ -45,6 +45,48 @@ async function readJson(res) {
   try { return text ? JSON.parse(text) : null; } catch { return null; }
 }
 
+function postForm(url, form, controller, onProgress) {
+  if (typeof XMLHttpRequest === 'undefined') {
+    return fetch(url, {
+      method: 'POST',
+      body: form,
+      signal: controller ? controller.signal : undefined,
+    });
+  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.responseType = 'text';
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) {
+        onProgress?.({ stage: 'Uploading mesh', progress: 0.04 });
+        return;
+      }
+      const uploadFrac = Math.min(1, Math.max(0, event.loaded / Math.max(1, event.total)));
+      onProgress?.({
+        stage: `Uploading mesh ${Math.round(uploadFrac * 100)}%`,
+        progress: 0.02 + uploadFrac * 0.08,
+        uploadLoaded: event.loaded,
+        uploadTotal: event.total,
+      });
+    };
+    xhr.onload = () => resolve({
+      ok: xhr.status >= 200 && xhr.status < 300,
+      status: xhr.status,
+      text: () => Promise.resolve(xhr.responseText || ''),
+    });
+    xhr.onerror = () => reject(new Error('upload failed'));
+    xhr.ontimeout = () => reject(new DOMException('timeout', 'AbortError'));
+    if (controller && controller.signal) {
+      controller.signal.addEventListener('abort', () => {
+        xhr.abort();
+        reject(new DOMException('timeout', 'AbortError'));
+      }, { once: true });
+    }
+    xhr.send(form);
+  });
+}
+
 /**
  * @param {ArrayBuffer} meshBuffer Binary STL buffer, including STEP meshes serialized by the UI
  * @param {Object} machineProfile Selected machine profile
@@ -64,7 +106,7 @@ export async function sliceMesh(meshBuffer, machineProfile, params, opts = {}) {
   const timer = controller ? setTimeout(() => controller.abort(), budgetMs) : null;
 
   try {
-    opts.onProgress?.('uploading');
+    opts.onProgress?.({ stage: 'Preparing upload', progress: 0.01 });
     const form = new FormData();
     form.append('file', new Blob([meshBuffer], { type: 'model/stl' }), 'mesh.stl');
     form.append('machine', JSON.stringify(machineProfile || {}));
@@ -73,20 +115,18 @@ export async function sliceMesh(meshBuffer, machineProfile, params, opts = {}) {
     form.append('params', JSON.stringify({
       ...(params || {}),
       optimizeOrientation: opts.optimizeOrientation !== false,
+      maxOrientationCandidates: Math.max(1, Math.min(3, Number(params?.maxOrientationCandidates) || 3)),
     }));
 
-    opts.onProgress?.({ stage: 'queued', progress: 0.03 });
-    const res = await fetch(joinUrl(opts.apiUrl, '/slice-jobs'), {
-      method: 'POST',
-      body: form,
-      signal: controller ? controller.signal : undefined,
-    });
+    opts.onProgress?.({ stage: 'Uploading mesh', progress: 0.02 });
+    const res = await postForm(joinUrl(opts.apiUrl, '/slice-jobs'), form, controller, opts.onProgress);
     const data = await readJson(res);
     if (!res.ok) {
       return { error: (data && (data.error || data.detail)) || `HTTP ${res.status}` };
     }
     const statusUrl = data && data.statusUrl;
     if (!statusUrl) return { error: 'missing slicer job status URL' };
+    opts.onProgress?.({ stage: 'Queued on PrusaSlicer service', progress: 0.10, state: 'queued', jobId: data.jobId || null });
 
     while (true) {
       await sleep(1000);

@@ -108,6 +108,10 @@ function SectionChips({ options, value, onChange }) {
 function ExploreSection({ title, chips, items, go, dark, onAdd }) {
   const [chip, setChip] = usePHome(chips[0]);
   const routeFor = (it) => (window.KIND_META[it.kind] && window.KIND_META[it.kind].route) || 'detail';
+  const filtered = chip === 'Featured'
+    ? items.filter(it => it.featured || (it.badge && /featured|top|new/i.test(it.badge.l || ''))).concat(items.filter(it => !(it.featured || (it.badge && /featured|top|new/i.test(it.badge.l || '')))))
+    : items.filter(it => window.itemMatchesCategory ? window.itemMatchesCategory(it, chip) : ((it.cat === chip) || (it.tags || []).includes(chip)));
+  const shown = filtered.slice(0, 5);
   return (
     <section style={{ background: dark ? 'var(--ff-fog)' : 'var(--surface)', padding: '52px 0' }}>
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 28px' }}>
@@ -117,7 +121,7 @@ function ExploreSection({ title, chips, items, go, dark, onAdd }) {
         </div>
         <div style={{ marginBottom: 22 }}><SectionChips options={chips} value={chip} onChange={setChip} /></div>
         <div className="home-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20, alignItems: 'stretch' }}>
-          {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: routeFor(it), id: it.id, kind: it.kind })} onAdd={onAdd} />)}
+          {shown.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: routeFor(it), id: it.id, kind: it.kind })} onAdd={onAdd} />)}
         </div>
       </div>
     </section>
@@ -125,16 +129,15 @@ function ExploreSection({ title, chips, items, go, dark, onAdd }) {
 }
 
 function HomePage({ go, onAddToCart }) {
-  const selectedMaterials = [window.MATERIALS[0], window.MATERIALS[4], window.MATERIALS[7], window.MATERIALS[14]].filter(Boolean);
   return (
     <div>
       <Hero go={go} />
       <StatsBand />
       <CategoryTiles go={go} />
-      <ExploreSection title="Explore Services" chips={window.JOB_CHIPS} items={window.JOBS.slice(0, 4)} go={go} />
-      <ExploreSection title="Explore Spaces" chips={window.SPACE_CHIPS} items={window.SPACES.slice(0, 4)} go={go} dark />
-      <ExploreSection title="Explore Equipment" chips={window.EQUIPMENT_CHIPS} items={window.EQUIPMENT.slice(0, 4)} go={go} />
-      <ExploreSection title="Shop Materials" chips={window.MATERIAL_CHIPS} items={selectedMaterials} go={go} onAdd={onAddToCart} dark />
+      <ExploreSection title="Explore Make" chips={window.JOB_CHIPS} items={window.JOBS} go={go} />
+      <ExploreSection title="Explore Work" chips={window.SPACE_CHIPS} items={window.SPACES} go={go} dark />
+      <ExploreSection title="Explore Rent" chips={window.EQUIPMENT_CHIPS} items={window.EQUIPMENT} go={go} />
+      <ExploreSection title="Explore Shop" chips={window.MATERIAL_CHIPS} items={window.MATERIALS} go={go} onAdd={onAddToCart} dark />
       <TrustBand />
       <section id="sub" style={{ padding: '20px 0 64px', background: 'var(--surface)' }}><SubBanner go={go} /></section>
     </div>

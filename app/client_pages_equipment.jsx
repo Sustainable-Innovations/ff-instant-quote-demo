@@ -71,7 +71,7 @@ function EquipmentDetailPage({ route, go, authed, requireAuth }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-3)', marginBottom: 18, flexWrap: 'wrap' }}>
         <button onClick={() => go({ name: 'home' })} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 13 }}>Home</button>
         <Icon name="chevR" size={13} />
-        <button onClick={() => go({ name: 'browse', kind: 'equipment' })} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 13 }}>Equipment</button>
+        <button onClick={() => go({ name: 'browse', kind: 'equipment' })} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 13 }}>Rent</button>
         <Icon name="chevR" size={13} />
         <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{item.title}</span>
       </div>

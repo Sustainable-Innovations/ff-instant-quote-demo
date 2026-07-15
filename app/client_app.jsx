@@ -16,7 +16,7 @@ function MobileMenu({ open, onClose, go, authed, onSignIn }) {
           <Wordmark />
           <button onClick={onClose} style={{ border: 'none', background: 'transparent', color: 'var(--ink-3)' }}><Icon name="x" size={22} /></button>
         </div>
-        {window.NAV_LINKS.map(l => <button key={l.id} onClick={() => { onClose(); l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.id === 'jobs' ? 'job' : 'space' }); }} style={{ border: 'none', background: 'transparent', textAlign: 'left', padding: '13px 6px', fontSize: 16, fontWeight: 600, color: 'var(--ink)', borderBottom: '1px solid var(--line)' }}>{l.label}</button>)}
+        {window.NAV_LINKS.map(l => <button key={l.id} onClick={() => { onClose(); l.id === 'subscription' ? go({ name: 'home', anchor: 'sub' }) : go({ name: 'browse', kind: l.kind || l.id }); }} style={{ border: 'none', background: 'transparent', textAlign: 'left', padding: '13px 6px', fontSize: 16, fontWeight: 600, color: 'var(--ink)', borderBottom: '1px solid var(--line)' }}>{l.label}</button>)}
         <div style={{ marginTop: 16 }}>
           {authed ? <Button kind="secondary" full icon="users" onClick={() => { onClose(); go({ name: 'account' }); }}>My account</Button>
             : <Button kind="lime" full onClick={() => { onClose(); onSignIn(); }} style={{ fontWeight: 700 }}>SIGN IN</Button>}

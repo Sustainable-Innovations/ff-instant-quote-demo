@@ -340,6 +340,10 @@ function loadSettings(){ try { const s = JSON.parse(localStorage.getItem(SKEY));
 function saveSettings(s){ localStorage.setItem(SKEY, JSON.stringify(s)); }
 function deepMerge(a,b){ for(const k in b){ if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])){ a[k]=deepMerge(a[k]||{},b[k]); } else a[k]=b[k]; } return a; }
 let SET = loadSettings();
+function minQtyFromMap(map) {
+  const keys = Object.keys(map || {}).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  return String(keys[0] || 1);
+}
 
 /* --- Phase 0/3: engine config (?embed / ?coeffs / ?capture), capture client --- */
 const engineCfg = readEngineConfig();
@@ -364,7 +368,11 @@ function currentParserConfidence() {
 // Supplier coefficient override via ?coeffs=<url> (Phase-4 host seam). Default unchanged.
 if (engineCfg.coeffsUrl) {
   loadCoefficients('pcb', { coeffsUrl: engineCfg.coeffsUrl, defaults: structuredClone(DEFAULTS) })
-    .then((c) => { SET = coreDeepMerge(structuredClone(DEFAULTS), c); if (state.loaded) recompute(); })
+    .then((c) => {
+      SET = coreDeepMerge(structuredClone(DEFAULTS), c);
+      if (!state.loaded || !SET.qty[state.spec.qty]) state.spec.qty = minQtyFromMap(SET.qty);
+      if (state.loaded) { buildParams(); recompute(); }
+    })
     .catch(() => {});
 }
 
@@ -373,8 +381,30 @@ const state = {
   loaded:false, side:'top',
   rawTop:null, rawBottom:null, imgTop:null, imgBottom:null,
   detected: { w:null, h:null, layers:null, holes:null, minHole:null, source:null, material:null, thick:null },
-  spec: { material:'FR-4', layers:'2', w:'', h:'', qty:'100', thick:'1.6', mask:'Green', finish:'HASL (lead-free)', copper:'1 oz', via:'Tented', feat:'6/6 mil', gold:'No', lead:'Standard · 5-7 days' },
+  spec: { material:'FR-4', layers:'2', w:'', h:'', qty:minQtyFromMap(SET.qty), thick:'1.6', mask:'Green', finish:'HASL (lead-free)', copper:'1 oz', via:'Tented', feat:'6/6 mil', gold:'No', lead:'Standard · 5-7 days' },
 };
+
+function applyQueryDefaults() {
+  const q = new URLSearchParams(location.search);
+  const allowed = {
+    material: ['FR-4', 'Aluminum'],
+    layers: Object.keys(SET.layer || {}),
+    qty: Object.keys(SET.qty || {}),
+    thick: Object.keys(SET.thick || {}),
+    mask: Object.keys(SET.mask || {}),
+    finish: Object.keys(SET.finish || {}),
+    copper: Object.keys(SET.copper || {}),
+    via: Object.keys(SET.via || {}),
+    feat: Object.keys(SET.feat || {}),
+    gold: ['No', 'Yes'],
+    lead: Object.keys(SET.lead || {}),
+  };
+  Object.entries(allowed).forEach(([key, vals]) => {
+    const val = q.get(key);
+    if (val && vals.includes(val)) state.spec[key] = val;
+  });
+}
+applyQueryDefaults();
 
 /* ---------------- riyal glyph (single source of truth: engines/core/util/units.js) ---------------- */
 const ry = (em)=> ryGlyph(em, { valign: -0.06, mr: 0.16, flexShrink: true });
@@ -584,7 +614,8 @@ function compute(){
   lastResult = computePCBQuote(state.spec, state.detected, SET, { parserConfidence: currentParserConfidence() });
   const c = lastResult.components;
   return { items: c.items, subtotal: c.subtotal, leadMult: c.leadMult, leadAdd: c.leadAdd,
-           platform: c.platform, total: lastResult.price, unit: lastResult.unitPrice, qty: lastResult.quantity };
+           platform: c.platform, total: lastResult.price, unit: lastResult.unitPrice, qty: lastResult.quantity,
+           qtyFactor: c.qtyFactor };
 }
 function recompute(){
   if (!state.loaded) return;
@@ -594,6 +625,7 @@ function recompute(){
   let html = '';
   for (const it of r.items) html += row(it.l, it.s, money(it.v));
   html += row('Subtotal','', money(r.subtotal), 'sub');
+  html += row('Quantity tier', 'panel/batch factor x' + Number(r.qtyFactor || 1).toFixed(2), '-');
   if (r.leadAdd>0.005) html += row('Lead-time uplift','×'+r.leadMult.toFixed(2), money(r.leadAdd));
   html += row('Platform fee', SET.platformPct+'%', money(r.platform));
   html += row('Total estimate','', money(r.total), 'total-row');

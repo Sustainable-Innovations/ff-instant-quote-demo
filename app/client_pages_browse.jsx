@@ -208,7 +208,7 @@ function BrowsePage({ route, go, query, onAddToCart }) {
         <div style={{ minWidth: 0 }}>
           <MiniPromo />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22, gap: 12, flexWrap: 'wrap' }}>
-            <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, letterSpacing: '-0.025em' }}>{meta.label} <span style={{ fontSize: 16, color: 'var(--ink-3)', fontWeight: 500 }}>- {items.length} {meta.plural}</span></h1>
+            <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, letterSpacing: '-0.025em' }}>{meta.browseTitle || meta.label} <span style={{ fontSize: 16, color: 'var(--ink-3)', fontWeight: 500 }}>- {items.length} {meta.plural}</span></h1>
             {kind === 'job' && <Button kind="accent" size="lg" icon="send" onClick={() => go({ name: 'browse', kind })} style={{ fontWeight: 700, letterSpacing: '0.04em' }}>BID YOUR JOB</Button>}
           </div>
           {items.length === 0

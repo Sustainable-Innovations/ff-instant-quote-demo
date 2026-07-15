@@ -19,10 +19,10 @@ const MATERIAL_CHIPS = ['Featured', 'Metals', 'Wood', 'Plastics', 'Rubber', 'Gla
    Internal `kind` values stay as-is to avoid churn in the working quote/order flow;
    only user-facing labels change. Cards, nav, and browse all read from here. */
 const KIND_META = {
-  job:       { key: 'job',       label: 'Make',      plural: 'make',      route: 'job',       cta: 'GET QUOTE',   icon: 'tools',    source: 'JOBS',      chips: 'JOB_CHIPS',       blurb: 'Quote manufacturing services' },
-  space:     { key: 'space',     label: 'Work',      plural: 'work',      route: 'detail',    cta: 'BOOK NOW',    icon: 'building', source: 'SPACES',    chips: 'SPACE_CHIPS',     blurb: 'Book workspaces and labs' },
-  equipment: { key: 'equipment', label: 'Rent',      plural: 'rent',      route: 'equipment', cta: 'RENT NOW',    icon: 'truck',    source: 'EQUIPMENT', chips: 'EQUIPMENT_CHIPS', blurb: 'Hire equipment and machinery' },
-  material:  { key: 'material',  label: 'Shop',      plural: 'shop',      route: 'product',   cta: 'ADD TO CART', icon: 'box',      source: 'MATERIALS', chips: 'MATERIAL_CHIPS',  blurb: 'Buy materials and supplies' },
+  job:       { key: 'job',       label: 'Make',      browseTitle: 'Manufacturing services', plural: 'services',  route: 'job',       cta: 'GET QUOTE',   icon: 'tools',    source: 'JOBS',      chips: 'JOB_CHIPS',       blurb: 'Quote manufacturing services' },
+  space:     { key: 'space',     label: 'Work',      browseTitle: 'Workspaces',             plural: 'spaces',    route: 'detail',    cta: 'BOOK NOW',    icon: 'building', source: 'SPACES',    chips: 'SPACE_CHIPS',     blurb: 'Book workspaces and labs' },
+  equipment: { key: 'equipment', label: 'Rent',      browseTitle: 'Equipment rentals',       plural: 'items',     route: 'equipment', cta: 'RENT NOW',    icon: 'truck',    source: 'EQUIPMENT', chips: 'EQUIPMENT_CHIPS', blurb: 'Hire equipment and machinery' },
+  material:  { key: 'material',  label: 'Shop',      browseTitle: 'Materials and supplies',  plural: 'products',  route: 'product',   cta: 'ADD TO CART', icon: 'box',      source: 'MATERIALS', chips: 'MATERIAL_CHIPS',  blurb: 'Buy materials and supplies' },
 };
 const KIND_ORDER = ['job', 'space', 'equipment', 'material'];
 

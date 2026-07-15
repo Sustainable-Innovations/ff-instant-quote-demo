@@ -105,7 +105,7 @@ function SectionChips({ options, value, onChange }) {
 }
 
 /* ---------- Explore section ---------- */
-function ExploreSection({ title, chips, items, go, dark, onAdd }) {
+function ExploreSection({ title, subtitle, viewAllLabel, chips, items, go, dark, onAdd }) {
   const [chip, setChip] = usePHome(chips[0]);
   const routeFor = (it) => (window.KIND_META[it.kind] && window.KIND_META[it.kind].route) || 'detail';
   const filtered = chip === 'Featured'
@@ -115,9 +115,12 @@ function ExploreSection({ title, chips, items, go, dark, onAdd }) {
   return (
     <section style={{ background: dark ? 'var(--ff-fog)' : 'var(--surface)', padding: '52px 0' }}>
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 28px' }}>
-        <div className="explore-section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-          <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.025em', whiteSpace: 'nowrap' }}>{title}</h2>
-          <button onClick={() => go({ name: 'browse', kind: items[0].kind })} style={{ border: 'none', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--ff-blue)', textDecoration: 'underline', textUnderlineOffset: 3, flexShrink: 0 }}>SEE ALL <Icon name="chevR" size={15} stroke={2.4} /></button>
+        <div className="explore-section-head" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18, gap: 18 }}>
+          <div>
+            <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.025em' }}>{title}</h2>
+            {subtitle && <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--ink-3)', lineHeight: 1.45 }}>{subtitle}</p>}
+          </div>
+          <button onClick={() => go({ name: 'browse', kind: items[0].kind })} style={{ border: 'none', background: 'transparent', display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--ff-blue)', textDecoration: 'underline', textUnderlineOffset: 3, flexShrink: 0, textTransform: 'uppercase' }}>{viewAllLabel || 'View all'} <Icon name="chevR" size={15} stroke={2.4} /></button>
         </div>
         <div style={{ marginBottom: 22 }}><SectionChips options={chips} value={chip} onChange={setChip} /></div>
         <div className="home-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20, alignItems: 'stretch' }}>
@@ -134,10 +137,10 @@ function HomePage({ go, onAddToCart }) {
       <Hero go={go} />
       <StatsBand />
       <CategoryTiles go={go} />
-      <ExploreSection title="Explore Make" chips={window.JOB_CHIPS} items={window.JOBS} go={go} />
-      <ExploreSection title="Explore Work" chips={window.SPACE_CHIPS} items={window.SPACES} go={go} dark />
-      <ExploreSection title="Explore Rent" chips={window.EQUIPMENT_CHIPS} items={window.EQUIPMENT} go={go} />
-      <ExploreSection title="Explore Shop" chips={window.MATERIAL_CHIPS} items={window.MATERIALS} go={go} onAdd={onAddToCart} dark />
+      <ExploreSection title="Get parts made" subtitle="Instant quotes and supplier-reviewed manufacturing services." viewAllLabel="View all services" chips={window.JOB_CHIPS} items={window.JOBS} go={go} />
+      <ExploreSection title="Book production space" subtitle="Benches, labs, desks and shop-floor bays by the hour or day." viewAllLabel="View all spaces" chips={window.SPACE_CHIPS} items={window.SPACES} go={go} dark />
+      <ExploreSection title="Rent equipment" subtitle="Verified industrial equipment for site, shop and warehouse work." viewAllLabel="View all equipment" chips={window.EQUIPMENT_CHIPS} items={window.EQUIPMENT} go={go} />
+      <ExploreSection title="Stock up on materials" subtitle="Sheet stock, filament, metals, plastics and workshop supplies." viewAllLabel="View all materials" chips={window.MATERIAL_CHIPS} items={window.MATERIALS} go={go} onAdd={onAddToCart} dark />
       <TrustBand />
       <section id="sub" style={{ padding: '20px 0 64px', background: 'var(--surface)' }}><SubBanner go={go} /></section>
     </div>

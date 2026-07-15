@@ -2,10 +2,10 @@
 
 /* ---------------- Hero / promo slides ---------------- */
 const HERO_SLIDES = [
-  { tag: 'HEAVY EQUIPMENT', off: '10 machine classes', title: 'Rent site machinery.', sub: 'Forklifts, cranes, loaders and trucks from verified fleets', cta: 'Browse equipment', image: 'assets/equipment/hero-heavy-equipment.jpg?v=industrial-20260628b', route: { name: 'browse', kind: 'equipment' } },
+  { tag: 'HEAVY EQUIPMENT', off: '10 machine classes', title: 'Rent site machinery.', sub: 'Forklifts, cranes, loaders and trucks from verified fleets', cta: 'Find equipment', image: 'assets/equipment/hero-heavy-equipment.jpg?v=industrial-20260628b', route: { name: 'browse', kind: 'equipment' } },
   { tag: 'RAW MATERIALS', off: '16 stock lines', title: 'Industrial materials.', sub: 'Metals, wood, plastics, rubber and structural stock', cta: 'Shop materials', image: 'assets/materials/aluminum-plate.jpg?v=industrial-20260628b', route: { name: 'browse', kind: 'material' } },
-  { tag: 'MAKE', off: '13 shops', title: 'CNC, on demand.', sub: '5-axis milling, PCB fab and custom manufacturing quotes', cta: 'Browse make', image: 'assets/hero/hero-cnc.jpg?v=perf-20260610', route: { name: 'browse', kind: 'job' } },
-  { tag: 'WORK', off: '126 spaces', title: 'Book the shop floor.', sub: 'Benches, labs and bays available by the hour or day', cta: 'Browse work', image: 'assets/hero/hero-workshop.jpg?v=perf-20260610', route: { name: 'browse', kind: 'space' } },
+  { tag: 'MAKE', off: '13 shops', title: 'CNC, on demand.', sub: '5-axis milling, PCB fab and custom manufacturing quotes', cta: 'Start a quote', image: 'assets/hero/hero-cnc.jpg?v=perf-20260610', route: { name: 'browse', kind: 'job' } },
+  { tag: 'WORK', off: '126 spaces', title: 'Book the shop floor.', sub: 'Benches, labs and bays available by the hour or day', cta: 'Book a workspace', image: 'assets/hero/hero-workshop.jpg?v=perf-20260610', route: { name: 'browse', kind: 'space' } },
 ];
 const PROMO_IMAGE = 'assets/hero/promo-pcb.jpg?v=perf-20260610';
 
@@ -19,10 +19,10 @@ const MATERIAL_CHIPS = ['Featured', 'Metals', 'Wood', 'Plastics', 'Rubber', 'Gla
    Internal `kind` values stay as-is to avoid churn in the working quote/order flow;
    only user-facing labels change. Cards, nav, and browse all read from here. */
 const KIND_META = {
-  job:       { key: 'job',       label: 'Make',      plural: 'make',      route: 'job',       cta: 'GET QUOTE',   icon: 'tools',    source: 'JOBS',      chips: 'JOB_CHIPS',       blurb: 'Custom manufacturing — quote or order' },
-  space:     { key: 'space',     label: 'Work',      plural: 'work',      route: 'detail',    cta: 'BOOK NOW',    icon: 'building', source: 'SPACES',    chips: 'SPACE_CHIPS',     blurb: 'Book a bench, desk or lab by the hour' },
-  equipment: { key: 'equipment', label: 'Rent',      plural: 'rent',      route: 'equipment', cta: 'RENT NOW',    icon: 'truck',    source: 'EQUIPMENT', chips: 'EQUIPMENT_CHIPS', blurb: 'Rent or lease heavy machines' },
-  material:  { key: 'material',  label: 'Shop',      plural: 'shop',      route: 'product',   cta: 'ADD TO CART', icon: 'box',      source: 'MATERIALS', chips: 'MATERIAL_CHIPS',  blurb: 'Buy stock and industrial supplies' },
+  job:       { key: 'job',       label: 'Make',      plural: 'make',      route: 'job',       cta: 'GET QUOTE',   icon: 'tools',    source: 'JOBS',      chips: 'JOB_CHIPS',       blurb: 'Quote manufacturing services' },
+  space:     { key: 'space',     label: 'Work',      plural: 'work',      route: 'detail',    cta: 'BOOK NOW',    icon: 'building', source: 'SPACES',    chips: 'SPACE_CHIPS',     blurb: 'Book workspaces and labs' },
+  equipment: { key: 'equipment', label: 'Rent',      plural: 'rent',      route: 'equipment', cta: 'RENT NOW',    icon: 'truck',    source: 'EQUIPMENT', chips: 'EQUIPMENT_CHIPS', blurb: 'Hire equipment and machinery' },
+  material:  { key: 'material',  label: 'Shop',      plural: 'shop',      route: 'product',   cta: 'ADD TO CART', icon: 'box',      source: 'MATERIALS', chips: 'MATERIAL_CHIPS',  blurb: 'Buy materials and supplies' },
 };
 const KIND_ORDER = ['job', 'space', 'equipment', 'material'];
 

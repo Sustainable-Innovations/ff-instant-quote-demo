@@ -2,10 +2,11 @@
 
 A fully client-side instant-quotation demo for on-demand manufacturing. It pairs a React marketplace (the **client website**) with self-contained instant-quote **engines** that the marketplace embeds — no backend, no API keys.
 
-The demo covers two quotation flows:
+The demo covers three quotation engines:
 
-- **3D models** — upload an `.stl` / `.step` file and get an indicative price in seconds. _(Live.)_
-- **PCB / PCBA** — upload a Gerber / ODB++ package for an indicative board price. _(Placeholder; pricing engine in progress.)_
+- **Polymer additive manufacturing** — upload an `.stl` / `.step` file and quote FDM, SLA, or SLS. FDM can use the optional PrusaSlicer service; every process has a deterministic fallback model.
+- **Laser / sheet cutting** — upload DXF, STL, or STEP and quote material, cutting, gas, programming, handling, deburr, and estimated nest allocation.
+- **PCB fabrication** — upload Gerber/Excellon files or a ZIP and quote bare-board fabrication. PCBA is not implemented and requires a separate reviewed workflow.
 
 ## Live demo
 
@@ -27,16 +28,30 @@ The root `index.html` redirects to `app/` (the marketplace).
 │   ├── index.html  *.jsx
 │   └── assets/{cards,hero}/
 ├── engines/
-│   ├── quote-3d/index.html # the live 3D-model quote engine (embedded via iframe)
-│   └── quote-pcb/index.html# PCB/PCBA quote engine — placeholder ("coming soon")
+│   ├── quote-3d/           # FDM / SLA / SLS engine
+│   ├── quote-laser/        # laser / sheet-cutting engine
+│   ├── quote-pcb/          # bare-PCB fabrication engine
+│   ├── core/               # shared schemas, pricing, review, capture, utilities
+│   └── coefficients/       # supplier-overridable coefficient fixtures
+├── services/
+│   └── prusaslicer-api/    # optional asynchronous FDM slicing service
 ├── brand/                  # logos + brand guidelines
 └── archive/                # earlier prototypes kept for reference
 ```
 
 The marketplace embeds an engine in an `<iframe>` on a job's detail page. Which engine
 is chosen comes from each listing's `quoteEngine` flag in `app/client_data.jsx`
-(`'3d'` → `engines/quote-3d/`, `'pcb'` → `engines/quote-pcb/`). The 3D engine also
-runs standalone — open `engines/quote-3d/index.html` directly.
+(`'3d'`, `'laser'`, or `'pcb'`). Each engine also runs standalone when the repository
+is served over HTTP.
+
+## Production integration documentation
+
+The static demo is not the system of record for a production quote. Use these
+documents to integrate the developed engines with the FlexFactory platform:
+
+- [`docs/engine-integration-guide.md`](docs/engine-integration-guide.md) — architecture, lifecycle, security, versioning, iframe migration, and delivery sequence.
+- [`docs/quotation-requirements.md`](docs/quotation-requirements.md) — client, service-provider, and platform requirements for all implemented engines.
+- [`docs/quote-api.openapi.yaml`](docs/quote-api.openapi.yaml) — proposed production HTTP contract.
 
 ## The 3D engine (`engines/quote-3d/index.html`)
 

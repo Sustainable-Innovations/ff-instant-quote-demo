@@ -1,0 +1,761 @@
+openapi: 3.1.0
+info:
+  title: FlexFactory Quotation API
+  version: 1.0.0-draft
+  description: >-
+    Proposed production boundary for the developed polymer-AM, laser/sheet-cutting,
+    and PCB-fabrication quotation engines. This contract is documentation; the
+    static demo does not implement these endpoints.
+servers:
+  - url: https://api.flexfactory.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Files
+  - name: Quotes
+  - name: Reviews
+  - name: Outcomes
+paths:
+  /v1/quote-files:
+    post:
+      tags: [Files]
+      summary: Upload one primary manufacturing file or package
+      operationId: uploadQuoteFile
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [processFamily, file]
+              properties:
+                processFamily:
+                  $ref: '#/components/schemas/ProcessFamily'
+                file:
+                  type: string
+                  format: binary
+                clientSha256:
+                  type: string
+                  pattern: '^[A-Fa-f0-9]{64}$'
+      responses:
+        '201':
+          description: File stored and awaiting or passing validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteFile'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '413':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /v1/quotes:
+    post:
+      tags: [Quotes]
+      summary: Create and start a quote session
+      operationId: createQuote
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuoteRequest'
+      responses:
+        '201':
+          description: Quote completed without asynchronous work
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteSession'
+        '202':
+          description: Analysis, slicing, or review is in progress
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Status resource for this quote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteSession'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /v1/quotes/{quoteId}:
+    get:
+      tags: [Quotes]
+      summary: Get quote state and latest authorized revision
+      operationId: getQuote
+      parameters:
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Current quote session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteSession'
+        '404':
+          $ref: '#/components/responses/Problem'
+  /v1/quotes/{quoteId}/accept:
+    post:
+      tags: [Quotes]
+      summary: Accept one unexpired firm quote revision and create an order
+      operationId: acceptQuote
+      parameters:
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [revision]
+              properties:
+                revision:
+                  type: integer
+                  minimum: 1
+                termsAcceptedAt:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Existing acceptance returned after an idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteAcceptance'
+        '201':
+          description: Quote accepted and order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteAcceptance'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /v1/quotes/{quoteId}/review-decision:
+    post:
+      tags: [Reviews]
+      summary: Approve, revise, or decline a review-required quote
+      operationId: decideQuoteReview
+      parameters:
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewDecision'
+      responses:
+        '200':
+          description: Updated quote with a new or terminal revision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteSession'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /v1/orders/{orderId}/job-actuals:
+    put:
+      tags: [Outcomes]
+      summary: Create or replace supplier job actuals used for calibration
+      operationId: putJobActuals
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobActuals'
+      responses:
+        '200':
+          description: Actuals updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobActuals'
+        '201':
+          description: Actuals created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobActuals'
+        '422':
+          $ref: '#/components/responses/Problem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    QuoteId:
+      name: quoteId
+      in: path
+      required: true
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+  responses:
+    Problem:
+      description: RFC 9457 problem details
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    ProcessFamily:
+      type: string
+      enum: [am, laser, pcb]
+    Process:
+      type: string
+      enum: [fdm, sla, sls, laser, pcb]
+    QuoteStatus:
+      type: string
+      enum:
+        - created
+        - uploading
+        - analyzing
+        - quoting
+        - quoted
+        - needs_review
+        - revising
+        - declined
+        - failed
+        - expired
+        - accepted
+        - cancelled
+    QuoteFile:
+      type: object
+      additionalProperties: false
+      required: [fileId, name, sizeBytes, sha256, status]
+      properties:
+        fileId:
+          type: string
+        name:
+          type: string
+        mediaType:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 1
+        sha256:
+          type: string
+          pattern: '^[A-Fa-f0-9]{64}$'
+        status:
+          type: string
+          enum: [uploaded, scanning, clean, rejected]
+        rejectionCode:
+          type: [string, 'null']
+    CreateQuoteRequest:
+      type: object
+      additionalProperties: false
+      required: [clientRequestId, listingId, supplierId, process, fileId, selection]
+      properties:
+        clientRequestId:
+          type: string
+          maxLength: 128
+        listingId:
+          type: string
+        supplierId:
+          type: string
+        process:
+          $ref: '#/components/schemas/Process'
+        fileId:
+          type: string
+        supplementaryFileIds:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+        selection:
+          oneOf:
+            - $ref: '#/components/schemas/AMSelection'
+            - $ref: '#/components/schemas/LaserSelection'
+            - $ref: '#/components/schemas/PCBSelection'
+          discriminator:
+            propertyName: kind
+    AMSelection:
+      type: object
+      additionalProperties: false
+      required: [kind, sourceUnits, materialId, quantity, lead, quality]
+      properties:
+        kind:
+          const: am
+        sourceUnits:
+          type: string
+          enum: [mm, cm, in]
+        materialId:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 500
+        lead:
+          type: string
+          enum: [standard, express]
+        quality:
+          type: string
+          enum: [draft, standard, fine]
+        infillPct:
+          type: number
+          minimum: 10
+          maximum: 100
+        machineId:
+          type: [string, 'null']
+        productionRequirements:
+          $ref: '#/components/schemas/ProductionRequirements'
+    LaserSelection:
+      type: object
+      additionalProperties: false
+      required: [kind, sourceUnits, materialId, thicknessMm, quantity, lead, edgeQuality, grainDirection]
+      properties:
+        kind:
+          const: laser
+        sourceUnits:
+          type: string
+          enum: [mm, cm, in]
+        materialId:
+          type: string
+        thicknessMm:
+          type: number
+          exclusiveMinimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        lead:
+          type: string
+          enum: [standard, express]
+        edgeQuality:
+          type: string
+          enum: [standard, fine]
+        grainDirection:
+          type: string
+          enum: [any, with_grain]
+        requestedNestYield:
+          type: [number, 'null']
+          minimum: 0.2
+          maximum: 0.95
+          description: Advisory only; the server/provider resolves the authoritative yield.
+        productionRequirements:
+          $ref: '#/components/schemas/ProductionRequirements'
+    PCBSelection:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - materialId
+        - layers
+        - widthMm
+        - heightMm
+        - quantity
+        - thicknessMm
+        - solderMask
+        - finish
+        - copperWeightOz
+        - viaCovering
+        - featureClass
+        - goldFingers
+        - lead
+      properties:
+        kind:
+          const: pcb
+        materialId:
+          type: string
+        layers:
+          type: integer
+          enum: [1, 2, 4, 6]
+        widthMm:
+          type: number
+          exclusiveMinimum: 0
+        heightMm:
+          type: number
+          exclusiveMinimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+        thicknessMm:
+          type: number
+          enum: [0.6, 0.8, 1.0, 1.2, 1.6, 2.0]
+        solderMask:
+          type: string
+        finish:
+          type: string
+        copperWeightOz:
+          type: number
+          enum: [1, 2, 3]
+        viaCovering:
+          type: string
+        featureClass:
+          type: string
+        goldFingers:
+          type: boolean
+        lead:
+          type: string
+          enum: [standard, batch_48h, express_24h]
+        productionRequirements:
+          $ref: '#/components/schemas/ProductionRequirements'
+    ProductionRequirements:
+      type: object
+      additionalProperties: true
+      description: >-
+        Structured process-specific requirements not yet automatically priced.
+        The capability/rules service determines whether values are supported,
+        review-only, or rejected.
+      properties:
+        notes:
+          type: string
+          maxLength: 5000
+        inspectionLevel:
+          type: string
+        certificates:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+    QuoteSession:
+      type: object
+      additionalProperties: false
+      required:
+        - quoteId
+        - revision
+        - status
+        - process
+        - listingId
+        - supplierId
+        - fileId
+        - progress
+        - createdAt
+        - updatedAt
+      properties:
+        quoteId:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/QuoteStatus'
+        process:
+          $ref: '#/components/schemas/Process'
+        listingId:
+          type: string
+        supplierId:
+          type: string
+        fileId:
+          type: string
+        normalizedSelection:
+          type: [object, 'null']
+        progress:
+          $ref: '#/components/schemas/QuoteProgress'
+        features:
+          type: [object, 'null']
+        result:
+          oneOf:
+            - $ref: '#/components/schemas/QuoteResult'
+            - type: 'null'
+        review:
+          $ref: '#/components/schemas/ReviewState'
+        versions:
+          $ref: '#/components/schemas/QuoteVersions'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+    QuoteProgress:
+      type: object
+      additionalProperties: false
+      required: [stage, progress]
+      properties:
+        stage:
+          type: string
+        progress:
+          type: number
+          minimum: 0
+          maximum: 1
+        elapsedSec:
+          type: [integer, 'null']
+          minimum: 0
+        etaSec:
+          type: [integer, 'null']
+          minimum: 0
+    QuoteResult:
+      type: object
+      additionalProperties: false
+      required:
+        - process
+        - currency
+        - shouldCost
+        - shouldCostUnit
+        - price
+        - unitPrice
+        - quantity
+        - leadTimeDays
+        - breakdown
+        - factors
+        - components
+        - features
+        - confidence
+        - needsReview
+        - reviewReasons
+      properties:
+        process:
+          $ref: '#/components/schemas/Process'
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        shouldCost:
+          type: number
+          minimum: 0
+          description: Total deterministic order cost before final commercial rules.
+        shouldCostUnit:
+          type: number
+          minimum: 0
+        price:
+          type: number
+          minimum: 0
+          description: Total order price before tax/shipping unless priceScope states otherwise.
+        unitPrice:
+          type: number
+          minimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+        leadTimeDays:
+          type: integer
+          minimum: 0
+        priceScope:
+          type: object
+          additionalProperties: false
+          properties:
+            taxIncluded:
+              type: boolean
+            shippingIncluded:
+              type: boolean
+        breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/BreakdownItem'
+        factors:
+          type: object
+          additionalProperties: true
+        components:
+          type: object
+          additionalProperties: true
+        features:
+          type: object
+          additionalProperties: true
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        needsReview:
+          type: boolean
+        reviewReasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewReason'
+    BreakdownItem:
+      type: object
+      additionalProperties: false
+      required: [key, label, amount, basis]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        amount:
+          type: number
+          minimum: 0
+        basis:
+          type: string
+          enum: [order, unit]
+        note:
+          type: string
+    ReviewReason:
+      type: object
+      additionalProperties: false
+      required: [code, message, severity]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [warning, review, reject]
+    ReviewState:
+      type: object
+      additionalProperties: false
+      properties:
+        required:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewReason'
+        assigneeId:
+          type: [string, 'null']
+        dueAt:
+          type: [string, 'null']
+          format: date-time
+    QuoteVersions:
+      type: object
+      additionalProperties: false
+      required: [contractVersion, engineVersion, coefficientsRef]
+      properties:
+        contractVersion:
+          type: string
+        engineVersion:
+          type: string
+        parserVersion:
+          type: [string, 'null']
+        slicerVersion:
+          type: [string, 'null']
+        coefficientsRef:
+          type: string
+    ReviewDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, reasonCode, note]
+      properties:
+        decision:
+          type: string
+          enum: [approve, revise, decline, request_information]
+        reasonCode:
+          type: string
+        note:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        revisedPrice:
+          type: number
+          minimum: 0
+        revisedLeadTimeDays:
+          type: integer
+          minimum: 0
+        overrideDetails:
+          type: object
+          additionalProperties: true
+    QuoteAcceptance:
+      type: object
+      additionalProperties: false
+      required: [quoteId, revision, orderId, acceptedAt]
+      properties:
+        quoteId:
+          type: string
+        revision:
+          type: integer
+        orderId:
+          type: string
+        acceptedAt:
+          type: string
+          format: date-time
+    JobActuals:
+      type: object
+      additionalProperties: false
+      required: [orderId, loadedCostTotal, currency, completedAt]
+      properties:
+        orderId:
+          type: string
+        actualMachineTimeSec:
+          type: number
+          minimum: 0
+        setupTimeSec:
+          type: number
+          minimum: 0
+        laborTouchTimeSec:
+          type: number
+          minimum: 0
+        consumablesCost:
+          type: number
+          minimum: 0
+        finishingLoadedCost:
+          type: number
+          minimum: 0
+        qcTimeSec:
+          type: number
+          minimum: 0
+        scrapReworkCost:
+          type: number
+          minimum: 0
+        capacitySnapshot:
+          type: object
+          additionalProperties: true
+        loadedCostTotal:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        completedAt:
+          type: string
+          format: date-time
+    Problem:
+      type: object
+      additionalProperties: true
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+        correlationId:
+          type: string
+        retryable:
+          type: boolean

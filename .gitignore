@@ -14,10 +14,15 @@ desktop.ini
 *.swp
 *.swo
 
+# Local Claude Code tooling (keep launch.json, ignore installed skills)
+.claude/skills/
+
 # Build / tooling
 node_modules/
 dist/
 .cache/
+__pycache__/
+*.py[cod]
 
 # local test fixtures (not committed)
 .testdata/

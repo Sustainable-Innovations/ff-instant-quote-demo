@@ -1,7 +1,77 @@
-// client_pages_browse.jsx — filtering / results page
+// client_pages_browse.jsx - filtering / results page
 const { useState: usePBrowse } = React;
 
-/* ---------- Collapsible filter group ---------- */
+const PRICE_LIMIT = 3000;
+const EMPTY_FILTERS = {
+  sort: 'Recommended',
+  categories: [],
+  locations: [],
+  rating: '4.5 & up',
+  deals: [],
+  priceMax: PRICE_LIMIT,
+};
+
+const normFilter = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const itemText = (i) => normFilter([i.title, i.vendor, i.city, i.cat, ...(i.tags || [])].join(' '));
+const itemPrice = (i) => Number.isFinite(Number(i.price)) ? Number(i.price) : Number.isFinite(Number(i.from)) ? Number(i.from) : null;
+
+function itemMatchesCategory(item, cat) {
+  const text = itemText(item);
+  const c = normFilter(cat);
+  if (!c) return true;
+  const aliases = {
+    'fdm fff': ['fdm', 'fff'],
+    'sla resin': ['sla', 'resin'],
+    'sls': ['sls'],
+    'sheet fabrication': ['laser', 'sheet', 'cutting'],
+    'cnc machining': ['cnc', 'milling', 'turning'],
+    electronics: ['pcb', 'assembly', 'reflow', 'smt'],
+    desks: ['desk'],
+    labs: ['lab'],
+    'shop floor': ['shop floor', 'workshop', 'studio'],
+    forklifts: ['forklift'],
+    telehandlers: ['telehandler'],
+    cranes: ['crane'],
+    'skid steers': ['skid steer'],
+    excavators: ['excavator'],
+    'wheel loaders': ['wheel loader'],
+    'dump trucks': ['dump truck'],
+    'mixer trucks': ['mixer truck'],
+    'scissor lifts': ['scissor lift'],
+    aluminum: ['aluminum', 'aluminium'],
+    'rubber glass': ['rubber', 'glass', 'fiberglass', 'foam'],
+  };
+  return (aliases[c] || [c]).some(t => text.includes(t));
+}
+
+function applyBrowseFilters(items, query, filters) {
+  const q = normFilter(query);
+  const ratingMin = filters.rating === 'Any' ? 0 : parseFloat(filters.rating) || 0;
+  let out = items.filter(i => {
+    if (q && !itemText(i).includes(q)) return false;
+    if (filters.categories.length && !filters.categories.some(c => itemMatchesCategory(i, c))) return false;
+    if (filters.locations.length && !filters.locations.includes(i.city)) return false;
+    if ((i.rating || 0) < ratingMin) return false;
+    const price = itemPrice(i);
+    if (price != null && price > filters.priceMax) return false;
+    if (filters.deals.length) {
+      const ok = filters.deals.every(d => {
+        if (d === 'On sale') return (i.off || 0) > 0;
+        if (d === 'Featured') return !!i.featured || (i.badge && /featured/i.test(i.badge.l || ''));
+        if (d === 'New this week') return i.badge && /new/i.test(i.badge.l || '');
+        if (d === 'Subscriber-only') return !!i.sub;
+        return true;
+      });
+      if (!ok) return false;
+    }
+    return true;
+  });
+  if (filters.sort === 'Top rated') out = [...out].sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.reviews || 0) - (a.reviews || 0));
+  if (filters.sort === 'Price: low to high') out = [...out].sort((a, b) => (itemPrice(a) ?? Number.MAX_SAFE_INTEGER) - (itemPrice(b) ?? Number.MAX_SAFE_INTEGER));
+  if (filters.sort === 'Newest') out = [...out].sort((a, b) => ((b.badge && /new/i.test(b.badge.l || '')) ? 1 : 0) - ((a.badge && /new/i.test(a.badge.l || '')) ? 1 : 0) || String(b.id).localeCompare(String(a.id)));
+  return out;
+}
+
 function FilterGroup({ label, children, open: openInit = false }) {
   const [open, setOpen] = usePBrowse(openInit);
   return (
@@ -15,10 +85,9 @@ function FilterGroup({ label, children, open: openInit = false }) {
   );
 }
 
-/* ---------- Radio / check rows ---------- */
 function RadioRow({ label, checked, onClick }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', background: 'transparent', padding: '2px 0', fontSize: 14, color: 'var(--ink-2)', fontWeight: 500, textAlign: 'left' }}>
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', background: 'transparent', padding: '2px 0', fontSize: 14, color: checked ? 'var(--ff-blue)' : 'var(--ink-2)', fontWeight: checked ? 700 : 500, textAlign: 'left' }}>
       <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid ' + (checked ? 'var(--ff-blue)' : 'var(--line-strong)'), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {checked && <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--ff-blue)' }} />}
       </span>
@@ -26,9 +95,10 @@ function RadioRow({ label, checked, onClick }) {
     </button>
   );
 }
+
 function CheckRow({ label, checked, onClick }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', background: 'transparent', padding: '2px 0', fontSize: 14, color: 'var(--ink-2)', fontWeight: 500, textAlign: 'left' }}>
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', background: 'transparent', padding: '2px 0', fontSize: 14, color: checked ? 'var(--ff-blue)' : 'var(--ink-2)', fontWeight: checked ? 700 : 500, textAlign: 'left' }}>
       <span className="chamfer-sm" style={{ width: 18, height: 18, border: '2px solid ' + (checked ? 'var(--ff-blue)' : 'var(--line-strong)'), background: checked ? 'var(--ff-blue)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {checked && <Icon name="check" size={12} stroke={3} style={{ color: '#fff' }} />}
       </span>
@@ -37,69 +107,69 @@ function CheckRow({ label, checked, onClick }) {
   );
 }
 
-/* ---------- Category tree node ---------- */
-function TreeNode({ node }) {
+function TreeNode({ node, selected, onToggle }) {
   const [open, setOpen] = usePBrowse(!!node.open);
+  const parentOn = selected.includes(node.label);
   return (
     <div>
-      <button onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', padding: '3px 0', fontSize: 14, fontWeight: 600, color: 'var(--ink)', textAlign: 'left' }}>
-        <span style={{ width: 14, color: 'var(--ff-blue)', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>{open ? '–' : '+'}</span>
+      <button onClick={() => { onToggle(node.label); setOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', padding: '3px 0', fontSize: 14, fontWeight: 600, color: parentOn ? 'var(--ff-blue)' : 'var(--ink)', textAlign: 'left' }}>
+        <span onClick={e => { e.stopPropagation(); setOpen(o => !o); }} style={{ width: 14, color: 'var(--ff-blue)', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>{open ? '-' : '+'}</span>
         {node.label}
       </button>
       {open && <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 22, marginTop: 4 }}>
-        {node.kids.map(k => <button key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', padding: '1px 0', fontSize: 13.5, color: 'var(--ink-2)', fontWeight: 500, textAlign: 'left' }}><span style={{ color: 'var(--ink-3)', fontWeight: 700 }}>+</span>{k}</button>)}
+        {node.kids.map(k => {
+          const on = selected.includes(k);
+          return <button key={k} onClick={() => onToggle(k)} style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', padding: '1px 0', fontSize: 13.5, color: on ? 'var(--ff-blue)' : 'var(--ink-2)', fontWeight: on ? 700 : 500, textAlign: 'left' }}><span style={{ color: on ? 'var(--ff-blue)' : 'var(--ink-3)', fontWeight: 700 }}>{on ? '✓' : '+'}</span>{k}</button>;
+        })}
       </div>}
     </div>
   );
 }
 
-/* ---------- Filter sidebar ---------- */
-function FilterRail({ kind, setKind, onClear }) {
-  const [loc, setLoc] = usePBrowse([]);
-  const [rating, setRating] = usePBrowse('4.5 & up');
-  const [deals, setDeals] = usePBrowse([]);
-  const toggle = (arr, set, v) => set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+function FilterRail({ kind, setKind, filters, setFilters, onClear }) {
+  const patch = (next) => setFilters(f => ({ ...f, ...next }));
+  const toggleField = (field, value) => setFilters(f => ({ ...f, [field]: f[field].includes(value) ? f[field].filter(x => x !== value) : [...f[field], value] }));
   return (
     <aside className="browse-side chamfer" style={{ width: 260, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--line)', alignSelf: 'flex-start', position: 'sticky', top: 88 }}>
       <div style={{ padding: '4px 20px 20px' }}>
         <FilterGroup label="Sort by">
-          {['Recommended', 'Top rated', 'Price: low to high', 'Newest'].map((s, k) => <RadioRow key={s} label={s} checked={k === 0} onClick={() => {}} />)}
+          {['Recommended', 'Top rated', 'Price: low to high', 'Newest'].map(s => <RadioRow key={s} label={s} checked={filters.sort === s} onClick={() => patch({ sort: s })} />)}
         </FilterGroup>
         <FilterGroup label="Category" open>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
-            <RadioRow label="Jobs" checked={kind === 'job'} onClick={() => setKind('job')} />
-            <RadioRow label="Spaces" checked={kind === 'space'} onClick={() => setKind('space')} />
+            {(window.KIND_ORDER || ['job', 'space', 'equipment', 'material']).map(k => (
+              <RadioRow key={k} label={window.KIND_META[k].label} checked={kind === k} onClick={() => { setKind(k); patch({ categories: [] }); }} />
+            ))}
           </div>
           <div style={{ height: 1, background: 'var(--line)', margin: '4px 0 8px' }} />
-          {window.FILTER_TREE.map(n => <TreeNode key={n.label} node={n} />)}
+          {((window.FILTER_TREES && window.FILTER_TREES[kind]) || window.FILTER_TREE).map(n => <TreeNode key={kind + n.label} node={n} selected={filters.categories} onToggle={v => toggleField('categories', v)} />)}
         </FilterGroup>
         <FilterGroup label="Location">
-          {window.LOCATIONS.map(l => <CheckRow key={l} label={l} checked={loc.includes(l)} onClick={() => toggle(loc, setLoc, l)} />)}
+          {window.LOCATIONS.map(l => <CheckRow key={l} label={l} checked={filters.locations.includes(l)} onClick={() => toggleField('locations', l)} />)}
         </FilterGroup>
         <FilterGroup label="Price">
           <div style={{ padding: '6px 2px 2px' }}>
-            <input type="range" min="0" max="100" defaultValue="60" style={{ width: '100%' }} />
+            <input type="range" min="0" max={PRICE_LIMIT} step="25" value={filters.priceMax} onChange={e => patch({ priceMax: Number(e.target.value) })} style={{ width: '100%' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--ink-3)', marginTop: 8, fontWeight: 600 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Riyal size={11} />0</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Riyal size={11} />750+</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Riyal size={11} />{filters.priceMax >= PRICE_LIMIT ? `${PRICE_LIMIT}+` : window.SAR(filters.priceMax)}</span>
             </div>
           </div>
         </FilterGroup>
         <FilterGroup label="Rating">
-          {window.RATING_OPTS.map(r => <RadioRow key={r} label={r} checked={rating === r} onClick={() => setRating(r)} />)}
+          {window.RATING_OPTS.map(r => <RadioRow key={r} label={r} checked={filters.rating === r} onClick={() => patch({ rating: r })} />)}
         </FilterGroup>
         <FilterGroup label="Deals">
-          {window.DEAL_OPTS.map(d => <CheckRow key={d} label={d} checked={deals.includes(d)} onClick={() => toggle(deals, setDeals, d)} />)}
+          {window.DEAL_OPTS.map(d => <CheckRow key={d} label={d} checked={filters.deals.includes(d)} onClick={() => toggleField('deals', d)} />)}
         </FilterGroup>
         <div style={{ paddingTop: 18 }}>
-          <button onClick={() => { setLoc([]); setRating('4.5 & up'); setDeals([]); onClear && onClear(); }} className="chamfer-sm focus-lime" style={{ width: '100%', height: 44, border: '1px solid var(--ff-blue)', background: 'var(--surface)', color: 'var(--ff-blue)', fontWeight: 700, fontSize: 13.5, letterSpacing: '0.06em' }}>CLEAR ALL</button>
+          <button onClick={onClear} className="chamfer-sm focus-lime" style={{ width: '100%', height: 44, border: '1px solid var(--ff-blue)', background: 'var(--surface)', color: 'var(--ff-blue)', fontWeight: 700, fontSize: 13.5, letterSpacing: '0.06em' }}>CLEAR ALL</button>
         </div>
       </div>
     </aside>
   );
 }
 
-/* ---------- Mini promo strip ---------- */
 function MiniPromo() {
   return (
     <div className="chamfer" style={{ position: 'relative', background: 'var(--ff-blue)', overflow: 'hidden', height: 132, marginBottom: 26 }}>
@@ -125,25 +195,26 @@ function MiniPromo() {
   );
 }
 
-function BrowsePage({ route, go, query }) {
+function BrowsePage({ route, go, query, onAddToCart }) {
   const [kind, setKind] = usePBrowse(route.kind || 'job');
-  const all = kind === 'job' ? window.JOBS : window.SPACES;
-  const q = (query || '').trim().toLowerCase();
-  const items = q ? all.filter(i => (i.title + i.vendor + i.tags.join(' ')).toLowerCase().includes(q)) : all;
+  const [filters, setFilters] = usePBrowse(EMPTY_FILTERS);
+  const meta = window.KIND_META[kind];
+  const all = window[meta.source] || [];
+  const items = applyBrowseFilters(all, query, filters);
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto', padding: '28px 28px 0' }}>
       <div className="browse-grid" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 30, alignItems: 'flex-start' }}>
-        <FilterRail kind={kind} setKind={setKind} />
+        <FilterRail kind={kind} setKind={setKind} filters={filters} setFilters={setFilters} onClear={() => setFilters(EMPTY_FILTERS)} />
         <div style={{ minWidth: 0 }}>
           <MiniPromo />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-            <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, letterSpacing: '-0.025em' }}>Results <span style={{ fontSize: 16, color: 'var(--ink-3)', fontWeight: 500 }}>· {items.length} {kind === 'job' ? 'jobs' : 'spaces'}</span></h1>
-            <Button kind="accent" size="lg" icon="send" onClick={() => go({ name: 'browse', kind })} style={{ fontWeight: 700, letterSpacing: '0.04em' }}>BID YOUR JOB</Button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22, gap: 12, flexWrap: 'wrap' }}>
+            <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, letterSpacing: '-0.025em' }}>{meta.browseTitle || meta.label} <span style={{ fontSize: 16, color: 'var(--ink-3)', fontWeight: 500 }}>- {items.length} {meta.plural}</span></h1>
+            {kind === 'job' && <Button kind="accent" size="lg" icon="send" onClick={() => go({ name: 'browse', kind })} style={{ fontWeight: 700, letterSpacing: '0.04em' }}>BID YOUR JOB</Button>}
           </div>
           {items.length === 0
             ? <div className="chamfer" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}><Empty icon="search" title="No matches" sub="Try a different search or clear filters." /></div>
             : <div className="results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 22, alignItems: 'stretch' }}>
-                {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: it.kind === 'job' ? 'job' : 'detail', id: it.id, kind: it.kind })} />)}
+                {items.map((it, k) => <ListingCard key={it.id} item={it} featured={k === 0} onOpen={() => go({ name: meta.route, id: it.id, kind: it.kind })} onAdd={onAddToCart} />)}
               </div>}
           <div style={{ padding: '52px 0 8px' }}><SubBanner go={go} /></div>
         </div>
@@ -152,4 +223,4 @@ function BrowsePage({ route, go, query }) {
   );
 }
 
-Object.assign(window, { BrowsePage, FilterGroup, FilterRail, MiniPromo });
+Object.assign(window, { BrowsePage, FilterGroup, FilterRail, MiniPromo, applyBrowseFilters, itemMatchesCategory });

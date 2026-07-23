@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://flexfactory/engines/coefficients/_schema.json",
+  "title": "FlexFactory engine coefficient set",
+  "description": "Validates supplier-overridable coefficient files. Common header is required; the body branches on `process`. Every rate is named, typed and unit-annotated in the source JSON's _note fields.",
+  "type": "object",
+  "required": ["supplier", "version", "process"],
+  "properties": {
+    "supplier": { "type": "string" },
+    "version": { "type": "string" },
+    "process": { "type": "string", "enum": ["3d", "fdm", "pcb", "laser"] },
+    "currency": { "type": "string" },
+    "_note": { "type": "string" },
+    "review": {
+      "type": "object",
+      "properties": {
+        "parserConfidenceFloor": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maxAreaCm2": { "type": "number", "minimum": 0 },
+        "uncertaintyCeiling": { "type": "number", "minimum": 0, "maximum": 1 },
+        "envelope": { "$ref": "#/definitions/xyz" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "process": { "const": "3d" } } },
+      "then": { "required": ["general", "materials", "processes"] }
+    },
+    {
+      "if": { "properties": { "process": { "const": "fdm" } } },
+      "then": { "required": ["general", "materials", "processes"] }
+    },
+    {
+      "if": { "properties": { "process": { "const": "pcb" } } },
+      "then": { "required": ["layer", "qty", "finish", "platformPct", "lead"] }
+    },
+    {
+      "if": { "properties": { "process": { "const": "laser" } } },
+      "then": { "required": ["rates", "materials", "nest", "qty", "lead"] }
+    }
+  ],
+  "definitions": {
+    "xyz": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "numberMap": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "qtyTiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["minQty", "multiplier"],
+        "properties": {
+          "minQty": { "type": "number" },
+          "multiplier": { "type": "number" }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

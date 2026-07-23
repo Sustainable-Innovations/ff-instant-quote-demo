@@ -2,13 +2,11 @@
 
 A fully client-side instant-quotation demo for on-demand manufacturing. It pairs a React marketplace (the **client website**) with self-contained instant-quote **engines** that the marketplace embeds.
 
-The quotation platform has three engine families:
+The demo covers three quotation engines:
 
-- **Additive manufacturing** — FDM uses the slicer-backed flow; SLA and SLS use the same integration without invoking a slicer.
-- **Laser cutting** — a separate engine for 2D cutting files and process parameters.
-- **PCB fabrication** — a dedicated Gerber/NC-drill quotation engine.
-
-This repository currently contains the browser-only additive reference engine and the live PCB fabrication engine. The additive reference calculates FDM/SLA/SLS prices from analysed model geometry; the production slicer adapter is not checked in here. A laser-engine implementation is also not present in this repository, and the current laser marketplace listing uses fixed pricing. See [`docs/quotation-engine-integration.md`](docs/quotation-engine-integration.md) for the integration map and current status.
+- **Polymer additive manufacturing** — upload an `.stl` / `.step` file and quote FDM, SLA, or SLS. FDM can use the optional PrusaSlicer service; every process has a deterministic fallback model.
+- **Laser / sheet cutting** — upload DXF, STL, or STEP and quote material, cutting, gas, programming, handling, deburr, and estimated nest allocation.
+- **PCB fabrication** — upload Gerber/Excellon files or a ZIP and quote bare-board fabrication. PCBA is not implemented and requires a separate reviewed workflow.
 
 ## Live demo
 
@@ -30,21 +28,36 @@ The root `index.html` redirects to `app/` (the marketplace).
 │   ├── index.html  *.jsx
 │   └── assets/{cards,hero}/
 ├── engines/
-│   ├── quote-3d/index.html # additive/CNC browser reference engine
-│   └── quote-pcb/index.html# live PCB fabrication engine
-├── docs/
-│   ├── quotation-engine-integration.md # engine contract and marketplace wiring
-│   └── pcb-engine-plan.md              # detailed PCB implementation notes
+│   ├── quote-3d/           # FDM / SLA / SLS engine
+│   ├── quote-laser/        # laser / sheet-cutting engine
+│   ├── quote-pcb/          # bare-PCB fabrication engine
+│   ├── core/               # shared schemas, pricing, review, capture, utilities
+│   └── coefficients/       # supplier-overridable coefficient fixtures
+├── services/
+│   └── prusaslicer-api/    # optional asynchronous FDM slicing service
 ├── brand/                  # logos + brand guidelines
 └── archive/                # earlier prototypes kept for reference
 ```
 
-The marketplace embeds an engine in an `<iframe>` on a job's detail page. Each instant-quote listing in `app/client_data.jsx` selects an engine and process with `quoteEngine` and `quoteProcess`. The URL maps and iframe construction are in `app/client_pages_job_detail.jsx` and `app/client_pages_detail.jsx`.
+The marketplace embeds an engine in an `<iframe>` on a job's detail page. Which engine
+is chosen comes from each listing's `quoteEngine` flag in `app/client_data.jsx`
+(`'3d'`, `'laser'`, or `'pcb'`). Each engine also runs standalone when the repository
+is served over HTTP.
+
+## Production integration documentation
+
+The static demo is not the system of record for a production quote. Use these
+documents to integrate the developed engines with the FlexFactory platform:
+
+- [`docs/engine-integration-guide.md`](docs/engine-integration-guide.md) — architecture, lifecycle, security, versioning, iframe migration, and delivery sequence.
+- [`docs/quotation-engine-integration.md`](docs/quotation-engine-integration.md) — marketplace wiring and engine contract.
+- [`docs/quotation-requirements.md`](docs/quotation-requirements.md) — client, service-provider, and platform requirements for all implemented engines.
+- [`docs/quote-api.openapi.yaml`](docs/quote-api.openapi.yaml) — proposed production HTTP contract.
 
 ## Additive reference engine (`engines/quote-3d/index.html`)
 
-- **FF Engine** — three.js viewer + client-side STL/STEP analysis (volume, surface area, bounding box) + heuristic FDM/SLA/SLS pricing in SAR. It does not call a slicer in this repository.
-- **Settings** — edit currency, quantity-discount tiers, lead-time multipliers, per-process rates (FDM / SLA / SLS / CNC) and process-specific parameters (infill, layer height, tolerance, finish), plus a full materials editor. Persists to localStorage.
+- **FF Engine** — three.js viewer + client-side STL/STEP analysis (volume, surface area, bounding box) + should-cost pricing in SAR. Additive (polymer AM) only: FDM / SLA / SLS. (CNC machining is subtractive — a different cost model — and is intentionally out of this engine; it belongs in a dedicated CNC engine later.)
+- **Settings** — shows the cost model up top, then edit currency, quantity-discount tiers, lead-time multipliers, per-process rates (FDM / SLA / SLS) and process-specific parameters (infill, layer height), plus a full materials editor. Persists to localStorage.
 
 ## PCB engine (`engines/quote-pcb/index.html`)
 
@@ -60,7 +73,6 @@ The marketplace embeds an engine in an `<iframe>` on a job's detail page. Each i
 - Process-specific pricing:
   - **FDM**: infill % (material scaling) + layer height (time scaling).
   - **SLA / SLS**: layer height.
-  - **CNC**: tolerance grade and surface finish multipliers.
 - Quantity-discount tiers and lead-time multipliers.
 - Full settings editor with reset-to-defaults, all persisted to the browser.
 
@@ -73,8 +85,9 @@ The marketplace embeds an engine in an `<iframe>` on a job's detail page. Each i
 
 ## Running locally
 
-- **Engine only:** open `engines/quote-3d/index.html` directly in any modern browser. No server required.
-- **Full marketplace:** serve the repo root over HTTP (e.g. `python -m http.server 8741`) and open `http://localhost:8741/` — it redirects to `app/`. A server is needed because the marketplace fetches `.jsx` files. The included VS Code / Claude launch config (`.claude/launch.json`) does this on port 8741.
+- **Serve the repo root over HTTP** (e.g. `python -m http.server 8741`) and open `http://localhost:8741/` — it redirects to `app/`. The included VS Code / Claude launch config (`.claude/launch.json`) does this on port 8741.
+- A server is now required for the engines too: since the Phase-0 refactor, each engine imports a shared ES-module pricing core (`engines/core/`) and fetches its coefficients from `engines/coefficients/*.json`, which browsers block under `file://`. (Before the refactor all engine code was inlined, so the 3D engine could be opened directly — that's no longer the case.)
+- Run the prices-unchanged gate with `node engines/core/test/snapshot.mjs` (no npm install needed).
 
 ## Privacy
 

@@ -357,7 +357,7 @@ const JOB_DETAILS = {
     location: 'Industrial City 2, Riyadh',
     available: 'Quoting instantly',
     quote: true,                 // embed the instant-quote engine
-    quoteEngine: '3d',           // which engine to embed: '3d' (live) | 'pcb' (placeholder)
+    quoteEngine: '3d',           // checked-in additive/CNC reference engine
     quoteProcess: 'fdm',
     summary: 'Industrial FDM farm running 18 machines. Upload an STL or STEP file for an instant, indicative price — material, machine time and lead time update live. Vertex confirms a firm quote before anything is charged.',
     specs: [
@@ -380,7 +380,7 @@ const JOB_DETAILS = {
     location: 'Second Industrial City, Dammam',
     available: 'Quoting instantly',
     quote: true,                 // embed the instant-quote engine
-    quoteEngine: 'pcb',          // PCB/PCBA engine (placeholder for now)
+    quoteEngine: 'pcb',          // live PCB fabrication engine
     quoteProcess: 'pcb',
     summary: 'Quick-turn bare-board fabrication. Upload your Gerber or ODB++ package for an instant, indicative price — layer count, board area, finish and quantity update live. Circuit Guild confirms a firm quote before anything is charged.',
     specs: [

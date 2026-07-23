@@ -26,11 +26,10 @@
 
 ## 1. Goal & context
 
-Build a self-contained, browser-only PCB quotation engine — same architecture as the existing
+The built engine is a self-contained, browser-only PCB quotation engine — the same architecture as the existing
 3D engine (`engines/quote-3d/index.html`): a single HTML file, libraries via CDN/importmap,
-all state client-side, `?embed=1` support, SAR-native pricing, brand-styled. It is already
-embedded by the marketplace on listing **J-3 "Prototype PCB"** via iframe, so once the engine
-lives at `engines/quote-pcb/index.html` no marketplace wiring changes are needed.
+all state client-side, `?embed=1` support, SAR-native pricing, and brand styling. It is
+embedded by the marketplace on listings **J-1 "6-Layer PCB"** and **J-3 "Prototype PCB"**.
 
 The engine must, like JLCPCB / NextPCB / AllPCB:
 1. Accept a **Gerber + NC-drill ZIP**, parse it, and **render the board** (top & bottom).
@@ -83,30 +82,24 @@ Single file `engines/quote-pcb/index.html`, mirroring the 3D engine:
 - `localStorage` for admin settings, `?embed=1` hides the topbar.
 - Brand tokens (FF blue/navy/lime, Helvetica Neue) and layout matching `quote-3d`.
 
-### 3.1 Gerber processing pipeline (browser, no upload)
+### 3.1 Gerber processing pipeline (as built; browser, no upload)
 
 ```
-ZIP drop ──► JSZip (unzip in-browser)
-          ──► whats-that-gerber (classify each file: top/bottom copper, mask,
-                silk, paste, drill, outline, inner layers…)  ──► layer count
-          ──► pcb-stackup (tracespace v4): parse + plot all layers
+ZIP drop ──► fflate (unzip in-browser)
+          ──► File objects filtered to manufacturing layers
+          ──► @tracespace/core v5: read → plot → renderLayers → renderBoard
                 ├─► top render  (SVG string + width/height in mm + viewBox)
                 ├─► bottom render (SVG string + dimensions)
-                └─► colorable layers → recolor mask live to selected color
-          ──► board outline bbox ──► board W × H (mm)
+                └─► SVG rasterized to canvas; soldermask recolored live
+          ──► .gbrjob or board viewBox ──► board W × H (mm) + layer count
           ──► Excellon drill parse ──► hole count + min hole size
 ```
 
-**Libraries (all CDN-loadable as ESM via esm.sh):**
-- [`jszip`](https://www.npmjs.com/package/jszip) — unzip.
-- [`whats-that-gerber`](https://www.npmjs.com/package/whats-that-gerber) (tracespace) — layer identification.
-- [`pcb-stackup`](https://www.npmjs.com/package/pcb-stackup) (tracespace v4) — top/bottom composite SVG + dimensions. Output SVG uses themeable colors → live soldermask recolor.
-- Fallback if `pcb-stackup` is awkward over CDN: [`gerber-to-svg`](https://github.com/macrofab/gerber-to-svg) per layer + manual composite, or tracespace v5 (`@tracespace/parser` + `/plotter` + `/renderer`), or [`WebGerber`](https://github.com/Kirizu-Official/WebGerber).
+**Libraries (loaded as ESM via esm.sh):**
+- [`fflate`](https://www.npmjs.com/package/fflate) — ZIP decompression.
+- [`@tracespace/core@5.0.0-alpha.0`](https://www.npmjs.com/package/@tracespace/core) — layer parsing, plotting, and top/bottom board rendering.
 
-> **Primary technical risk:** tracespace v4 (`pcb-stackup`) historically assumes Node
-> streams/Buffer; browser use relies on esm.sh polyfills. **Phase 0 is a spike** to confirm a
-> sample Gerber ZIP renders in-browser before building the rest. If it fails, drop to the
-> `gerber-to-svg` / v5 fallback (same pipeline shape).
+`JSZip` and tracespace v4's `pcb-stackup` were evaluated but are not used by the built engine; see the implementation notes above for the browser compatibility findings.
 
 ### 3.2 Auto-detect details
 - **Board size:** bounding box of the outline layer (`Edge.Cuts` / `.gko` / `.gm1`), else the
@@ -199,12 +192,12 @@ Second top-tab "Settings" (like the 3D engine), editing every rate above, persis
 
 ## 8. Marketplace integration
 
-Already wired in the previous reorg — no new JSX required:
-- J-3 "Prototype PCB" → `JOB_DETAILS['J-3'] = { quote:true, quoteEngine:'pcb' }` → iframe
-  `../engines/quote-pcb/index.html?embed=1`. The engine replaces the current placeholder file.
-- `JOB_DETAIL_PCB` already lists Gerber/ODB++ as accepted formats and PCB specs.
-- *Optional:* also point J-1 "6-Layer PCB" at the engine (`quoteEngine:'pcb'`) instead of its
-  current manual custom-quote flow — only if desired.
+The PCB engine is wired to both PCB instant-quote listings:
+- `J-1` "6-Layer PCB" and `J-3` "Prototype PCB" set `quote:true`, `quoteEngine:'pcb'`, and `quoteProcess:'pcb'` in `app/client_data.jsx`.
+- `app/client_pages_job_detail.jsx` maps `pcb` to `../engines/quote-pcb/index.html`, appends `?embed=1&process=pcb`, and listens for `ffPcbHeight` messages to resize the iframe.
+- `app/client_pages_detail.jsx` contains the same engine URL map for the legacy detail route and must remain aligned.
+
+The cross-engine integration overview is in `docs/quotation-engine-integration.md`.
 
 ---
 
@@ -215,12 +208,12 @@ Already wired in the previous reorg — no new JSX required:
 - Change each parameter → breakdown line items and **total** update live and sum correctly.
 - Mask color change recolors the preview.
 - Settings edits persist across reload; Reset restores defaults.
-- Embedded view inside the J-3 marketplace page (`?embed=1`) hides the topbar and fits.
+- Embedded views inside the J-1 and J-3 marketplace pages (`?embed=1`) hide the topbar and fit.
 - No console errors; Chrome verified via the preview tools.
 
 ---
 
-## 10. Open items to confirm before/while building
-- A **sample Gerber ZIP** to test with (I can use a public KiCad demo, or you provide a real board).
-- Whether to also route **J-1** through the engine (section 8, optional).
-- Ballpark **default rates** in SAR (I'll seed sensible market-like defaults; admin can tune).
+## 10. Operational follow-ups
+
+- Replace the seeded SAR rates with approved production rates before treating results as firm quotations.
+- Revalidate parsing and pricing against representative Gerber packages from supported PCB tools.

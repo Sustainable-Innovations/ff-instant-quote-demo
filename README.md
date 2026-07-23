@@ -1,11 +1,14 @@
 # Flex Factory — Instant Quote Demo
 
-A fully client-side instant-quotation demo for on-demand manufacturing. It pairs a React marketplace (the **client website**) with self-contained instant-quote **engines** that the marketplace embeds — no backend, no API keys.
+A fully client-side instant-quotation demo for on-demand manufacturing. It pairs a React marketplace (the **client website**) with self-contained instant-quote **engines** that the marketplace embeds.
 
-The demo covers two quotation flows:
+The quotation platform has three engine families:
 
-- **3D models** — upload an `.stl` / `.step` file and get an indicative price in seconds. _(Live.)_
-- **PCB / PCBA** — upload a Gerber / ODB++ package for an indicative board price. _(Placeholder; pricing engine in progress.)_
+- **Additive manufacturing** — FDM uses the slicer-backed flow; SLA and SLS use the same integration without invoking a slicer.
+- **Laser cutting** — a separate engine for 2D cutting files and process parameters.
+- **PCB fabrication** — a dedicated Gerber/NC-drill quotation engine.
+
+This repository currently contains the browser-only additive reference engine and the live PCB fabrication engine. The additive reference calculates FDM/SLA/SLS prices from analysed model geometry; the production slicer adapter is not checked in here. A laser-engine implementation is also not present in this repository, and the current laser marketplace listing uses fixed pricing. See [`docs/quotation-engine-integration.md`](docs/quotation-engine-integration.md) for the integration map and current status.
 
 ## Live demo
 
@@ -27,21 +30,27 @@ The root `index.html` redirects to `app/` (the marketplace).
 │   ├── index.html  *.jsx
 │   └── assets/{cards,hero}/
 ├── engines/
-│   ├── quote-3d/index.html # the live 3D-model quote engine (embedded via iframe)
-│   └── quote-pcb/index.html# PCB/PCBA quote engine — placeholder ("coming soon")
+│   ├── quote-3d/index.html # additive/CNC browser reference engine
+│   └── quote-pcb/index.html# live PCB fabrication engine
+├── docs/
+│   ├── quotation-engine-integration.md # engine contract and marketplace wiring
+│   └── pcb-engine-plan.md              # detailed PCB implementation notes
 ├── brand/                  # logos + brand guidelines
 └── archive/                # earlier prototypes kept for reference
 ```
 
-The marketplace embeds an engine in an `<iframe>` on a job's detail page. Which engine
-is chosen comes from each listing's `quoteEngine` flag in `app/client_data.jsx`
-(`'3d'` → `engines/quote-3d/`, `'pcb'` → `engines/quote-pcb/`). The 3D engine also
-runs standalone — open `engines/quote-3d/index.html` directly.
+The marketplace embeds an engine in an `<iframe>` on a job's detail page. Each instant-quote listing in `app/client_data.jsx` selects an engine and process with `quoteEngine` and `quoteProcess`. The URL maps and iframe construction are in `app/client_pages_job_detail.jsx` and `app/client_pages_detail.jsx`.
 
-## The 3D engine (`engines/quote-3d/index.html`)
+## Additive reference engine (`engines/quote-3d/index.html`)
 
-- **FF Engine** — three.js viewer + client-side STL/STEP analysis (volume, surface area, bounding box) + heuristic pricing in SAR. All coefficients configurable in the Settings tab.
+- **FF Engine** — three.js viewer + client-side STL/STEP analysis (volume, surface area, bounding box) + heuristic FDM/SLA/SLS pricing in SAR. It does not call a slicer in this repository.
 - **Settings** — edit currency, quantity-discount tiers, lead-time multipliers, per-process rates (FDM / SLA / SLS / CNC) and process-specific parameters (infill, layer height, tolerance, finish), plus a full materials editor. Persists to localStorage.
+
+## PCB engine (`engines/quote-pcb/index.html`)
+
+- Accepts a Gerber/NC-drill ZIP, renders the board, and auto-detects dimensions, copper layers, holes, and minimum hole size.
+- Produces an itemized PCB-fabrication price with editable rates stored in localStorage.
+- Supports the embedded marketplace layout through `?embed=1`.
 
 ## Features
 
